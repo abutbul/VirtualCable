@@ -15,6 +15,8 @@ public static class VirtualCableCatalog
     {
         "CABLE-A Input",
         "CABLE-B Input",
+        "CABLE-C Input",
+        "CABLE-D Input",
         "Microphone (USB)",
         "System Default Input"
     };
@@ -23,27 +25,25 @@ public static class VirtualCableCatalog
     {
         "CABLE-A Output",
         "CABLE-B",
+        "CABLE-C",
+        "CABLE-D",
         "Speakers (Realtek)",
         "Headphones (USB)"
     };
 
-    public static IReadOnlyList<VirtualCableRoute> BuildDefaultRoutes() => new[]
+    public static IReadOnlyList<VirtualCableRoute> BuildDefaultRoutes() => BuildRoutes(new[] { "A", "B", "C", "D" });
+
+    public static IReadOnlyList<VirtualCableRoute> BuildRoutes(IEnumerable<string> cableIds)
     {
-        new VirtualCableRoute
-        {
-            Name = "CABLE-A",
-            Summary = "Routes the virtual input to the A recording endpoint.",
-            InputDevice = "CABLE-A Input",
-            OutputDevice = "CABLE-A Output",
-            Enabled = true
-        },
-        new VirtualCableRoute
-        {
-            Name = "CABLE-B",
-            Summary = "Routes the virtual input to the B recording endpoint.",
-            InputDevice = "CABLE-B Input",
-            OutputDevice = "CABLE-B",
-            Enabled = true
-        }
-    };
+        return cableIds
+            .Select(id => new VirtualCableRoute
+            {
+                Name = $"CABLE-{id}",
+                Summary = $"Routes the {id} virtual input to the {id} output endpoint.",
+                InputDevice = $"CABLE-{id} Input",
+                OutputDevice = id == "A" ? "CABLE-A Output" : $"CABLE-{id}",
+                Enabled = true
+            })
+            .ToArray();
+    }
 }

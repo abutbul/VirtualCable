@@ -9,3 +9,4 @@
 /home/david/code/radio-archive/VBCableAlternative.Core/obj/Debug/net9.0/refint/VBCableAlternative.Core.dll
 /home/david/code/radio-archive/VBCableAlternative.Core/obj/Debug/net9.0/VBCableAlternative.Core.pdb
 /home/david/code/radio-archive/VBCableAlternative.Core/obj/Debug/net9.0/ref/VBCableAlternative.Core.dll
+/home/david/code/radio-archive/VBCableAlternative.Core/obj/Debug/net9.0/VBCableAlternative.Core.sourcelink.json

@@ -99,3 +99,4 @@
 /home/david/code/radio-archive/VBCableAlternative.Tests/obj/Debug/net9.0/VBCableAlternative.Tests.pdb
 /home/david/code/radio-archive/VBCableAlternative.Tests/obj/Debug/net9.0/VBCableAlternative.Tests.genruntimeconfig.cache
 /home/david/code/radio-archive/VBCableAlternative.Tests/obj/Debug/net9.0/ref/VBCableAlternative.Tests.dll
+/home/david/code/radio-archive/VBCableAlternative.Tests/obj/Debug/net9.0/VBCableAlternative.Tests.sourcelink.json

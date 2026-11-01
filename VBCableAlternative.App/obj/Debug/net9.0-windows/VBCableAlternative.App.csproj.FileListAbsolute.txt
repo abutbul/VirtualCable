@@ -22,3 +22,4 @@
 /home/david/code/radio-archive/VBCableAlternative.App/obj/Debug/net9.0-windows/VBCableAlternative.App.pdb
 /home/david/code/radio-archive/VBCableAlternative.App/obj/Debug/net9.0-windows/VBCableAlternative.App.genruntimeconfig.cache
 /home/david/code/radio-archive/VBCableAlternative.App/obj/Debug/net9.0-windows/ref/VBCableAlternative.App.dll
+/home/david/code/radio-archive/VBCableAlternative.App/obj/Debug/net9.0-windows/VBCableAlternative.App.sourcelink.json

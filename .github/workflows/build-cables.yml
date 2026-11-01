@@ -1,0 +1,40 @@
+name: Build VB-Cable variants
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-cables:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cable: [A, B, C, D]
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore VBCableAlternative.sln /p:EnableWindowsTargeting=true
+
+      - name: Build cable ${{ matrix.cable }}
+        run: |
+          dotnet build VBCableAlternative.App/VBCableAlternative.App.csproj \
+            --configuration Release \
+            /p:EnableWindowsTargeting=true \
+            /p:OutputPath=artifacts/cable-${{ matrix.cable }}/
+
+      - name: Upload cable ${{ matrix.cable }} artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cable-${{ matrix.cable }}
+          path: artifacts/cable-${{ matrix.cable }}
