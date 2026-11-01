@@ -1,0 +1,43 @@
+# Build outputs
+bin/
+bin/**
+obj/
+obj/**
+artifacts/
+artifacts/**
+publish/
+publish/**
+release-assets/
+release-assets/**
+
+# .NET tooling
+*.user
+*.suo
+*.cache
+*.pdb
+*.dll
+*.exe
+*.apphost
+*.runtimeconfig.json
+*.deps.json
+*.json.user
+*.csproj.user
+
+# VS / IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local test / package output
+TestResults/
+coverage/
+*.trx
+
+# GitHub release packaging output
+VirtualCable-Cable-*-win-x64.zip

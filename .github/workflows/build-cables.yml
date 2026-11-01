@@ -7,6 +7,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-cables:
     runs-on: windows-latest
@@ -74,4 +77,6 @@ jobs:
             release-assets/cable-B-win-x64/VirtualCable-Cable-B-win-x64.zip
             release-assets/cable-C-win-x64/VirtualCable-Cable-C-win-x64.zip
             release-assets/cable-D-win-x64/VirtualCable-Cable-D-win-x64.zip
+          overwrite_files: true
           generate_release_notes: true
+          make_latest: true
