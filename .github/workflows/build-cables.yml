@@ -16,10 +16,10 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 9.0.x
 
@@ -27,14 +27,19 @@ jobs:
         run: dotnet restore VBCableAlternative.sln /p:EnableWindowsTargeting=true
 
       - name: Build cable ${{ matrix.cable }}
+        shell: pwsh
         run: |
-          dotnet build VBCableAlternative.App/VBCableAlternative.App.csproj \
-            --configuration Release \
-            /p:EnableWindowsTargeting=true \
-            /p:OutputPath=artifacts/cable-${{ matrix.cable }}/
+          $output = Join-Path $env:GITHUB_WORKSPACE "artifacts/cable-${{ matrix.cable }}"
+          New-Item -ItemType Directory -Path $output -Force | Out-Null
+          dotnet build VBCableAlternative.App/VBCableAlternative.App.csproj `
+            --configuration Release `
+            /p:EnableWindowsTargeting=true `
+            /p:OutputPath=$output
+          Get-ChildItem $output | Select-Object FullName
 
       - name: Upload cable ${{ matrix.cable }} artifact
         uses: actions/upload-artifact@v4
         with:
           name: cable-${{ matrix.cable }}
           path: artifacts/cable-${{ matrix.cable }}
+          if-no-files-found: error
