@@ -1,0 +1,145 @@
+{
+  "format": 1,
+  "restore": {
+    "/home/david/code/radio-archive/VBCableAlternative.App/VBCableAlternative.App.csproj": {}
+  },
+  "projects": {
+    "/home/david/code/radio-archive/VBCableAlternative.App/VBCableAlternative.App.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/david/code/radio-archive/VBCableAlternative.App/VBCableAlternative.App.csproj",
+        "projectName": "VBCableAlternative.App",
+        "projectPath": "/home/david/code/radio-archive/VBCableAlternative.App/VBCableAlternative.App.csproj",
+        "packagesPath": "/home/david/.nuget/packages/",
+        "outputPath": "/home/david/code/radio-archive/VBCableAlternative.App/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/david/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0-windows"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0-windows7.0": {
+            "targetAlias": "net9.0-windows",
+            "projectReferences": {
+              "/home/david/code/radio-archive/VBCableAlternative.Core/VBCableAlternative.Core.csproj": {
+                "projectPath": "/home/david/code/radio-archive/VBCableAlternative.Core/VBCableAlternative.Core.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.200"
+      },
+      "frameworks": {
+        "net9.0-windows7.0": {
+          "targetAlias": "net9.0-windows",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[9.0.2, 9.0.2]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            },
+            "Microsoft.WindowsDesktop.App.WPF": {
+              "privateAssets": "none"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/home/david/.dotnet/sdk/9.0.200/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/david/code/radio-archive/VBCableAlternative.Core/VBCableAlternative.Core.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/david/code/radio-archive/VBCableAlternative.Core/VBCableAlternative.Core.csproj",
+        "projectName": "VBCableAlternative.Core",
+        "projectPath": "/home/david/code/radio-archive/VBCableAlternative.Core/VBCableAlternative.Core.csproj",
+        "packagesPath": "/home/david/.nuget/packages/",
+        "outputPath": "/home/david/code/radio-archive/VBCableAlternative.Core/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/david/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.200"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[9.0.2, 9.0.2]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/home/david/.dotnet/sdk/9.0.200/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}
