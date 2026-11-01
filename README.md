@@ -1,21 +1,15 @@
-# VB-Cable A+B Alternative
+# VB-CABLE Prototype
 
-This project is a Windows-targeted desktop prototype for a virtual audio cable manager inspired by VB-Audio's cable pattern. It models the requested virtual endpoints for A/B/C/D cable routing and exposes them through a small WPF desktop dashboard.
+This project is a Windows-targeted WPF prototype modeled on the VB-CABLE reference manual.
 
-## Included endpoints
+## Manual endpoint model
 
-- `CABLE-A Input`
-- `CABLE-B Input`
-- `CABLE-C Input`
-- `CABLE-D Input`
-- `CABLE-A Output`
-- `CABLE-B`
-- `CABLE-C`
-- `CABLE-D`
+- `CABLE Input` is the playback device. Applications play audio to it.
+- `CABLE Output` is the recording device. Recording applications receive the audio from it.
 
-## Important note
+## Driver status
 
-This repository provides the app shell, default routing model, and a Windows desktop user interface. A true virtual audio cable driver that creates new Windows audio endpoints at the OS level normally requires a kernel-mode driver or a deeper Windows audio integration than a user-mode app can provide. This project is therefore a practical prototype and management layer for the requested concept.
+The repository does not yet contain a Windows audio driver, INF package, signed catalog, or driver setup program. Therefore, running this prototype does not install a driver or create Windows audio endpoints. It does not implement the manual's audio streaming, format conversion, latency, buffer statistics, or WASAPI loopback features. A real installer release must include a working driver package and be tested and signed for the supported Windows versions.
 
 ## Run on Windows 10+
 
@@ -33,6 +27,6 @@ dotnet test VBCableAlternative.sln /p:EnableWindowsTargeting=true --nologo
 
 This validates the cable catalog from the Ubuntu development environment while targeting the Windows desktop app.
 
-## CI coverage
+## Build artifact
 
-The repository includes a GitHub Actions workflow that builds four cable variants: A, B, C, and D.
+GitHub Actions builds one Windows x64 ZIP named `VirtualCable-Prototype-win-x64.zip`. This is the WPF prototype only, not a driver installer.

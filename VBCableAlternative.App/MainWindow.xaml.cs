@@ -14,6 +14,7 @@ namespace VBCableAlternative.App
         {
             InitializeComponent();
             DataContext = this;
+            Title = "VB-CABLE Prototype";
             LoadDefaultDevices();
         }
 
