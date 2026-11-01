@@ -41,3 +41,4 @@ coverage/
 
 # GitHub release packaging output
 VirtualCable-Cable-*-win-x64.zip
+*.pdf
