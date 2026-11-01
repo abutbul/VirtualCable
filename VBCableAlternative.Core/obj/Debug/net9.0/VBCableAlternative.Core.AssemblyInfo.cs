@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("VBCableAlternative.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3b9ee08db39dcc2cd60020623400d8ae76c56b85")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+82a3cb24bf3d8e4607c149da74830a9fc10feba3")]
 [assembly: System.Reflection.AssemblyProductAttribute("VBCableAlternative.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("VBCableAlternative.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
