@@ -15,6 +15,7 @@ $infPath = Join-Path $PSScriptRoot "ComponentizedAudioSample.inf"
 $hardwareId = "Root\sysvad_ComponentizedAudioSample"
 
 $devconCandidates = @(
+    (Join-Path $PSScriptRoot "devcon.exe"),
     (Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\Tools\x64\devcon.exe"),
     (Join-Path $env:ProgramFiles "Windows Kits\10\Tools\x64\devcon.exe")
 )

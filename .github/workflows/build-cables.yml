@@ -68,6 +68,22 @@ jobs:
           New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
           Get-ChildItem $packageDir -Force | Copy-Item -Destination $stageDir -Recurse -Force
 
+          dotnet publish VBCableAlternative.App/VBCableAlternative.App.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            --output $stageDir `
+            /p:EnableWindowsTargeting=true
+          if ($LASTEXITCODE -ne 0) { throw "Virtual Cable Manager publish failed." }
+          if (-not (Test-Path (Join-Path $stageDir "VirtualCableManager.exe"))) { throw "VirtualCableManager.exe was not published." }
+
+          $devcon = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\Tools" -Filter devcon.exe -Recurse |
+            Where-Object { $_.FullName -match '[\\/]x64[\\/]devcon\.exe$' } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if (-not $devcon) { throw "WDK DevCon utility was not found." }
+          Copy-Item $devcon.FullName (Join-Path $stageDir "devcon.exe") -Force
+
           $certificate = New-SelfSignedCertificate `
             -Type CodeSigningCert `
             -Subject "CN=VirtualCable Local Test Signing" `
@@ -88,6 +104,11 @@ jobs:
           Copy-Item "drivers/README.md" $stageDir
           Copy-Item "drivers/windows-driver-samples/LICENSE" $stageDir
           Copy-Item "drivers/windows-driver-samples/wil/LICENSE" (Join-Path $stageDir "WIL-LICENSE")
+          Get-ChildItem $stageDir -Filter "*.pdb" -File | Remove-Item -Force
+
+          foreach ($requiredFile in @("VirtualCableManager.exe", "devcon.exe", "Install-Cable.ps1", "README.md", "LICENSE", "WIL-LICENSE", "TabletAudioSample.sys", "ComponentizedAudioSample.inf", "sysvad.cat", "VirtualCable-TestCertificate.cer")) {
+            if (-not (Test-Path (Join-Path $stageDir $requiredFile))) { throw "Final release package is missing $requiredFile." }
+          }
 
           $zipPath = Join-Path $env:GITHUB_WORKSPACE "VirtualCable-Driver-TestSigned-win-x64.zip"
           Compress-Archive -Path (Join-Path $stageDir '*') -DestinationPath $zipPath -Force

@@ -1,6 +1,8 @@
 # VB-CABLE Test Driver Package
 
-The release ZIP contains one x64 Windows test driver package. It creates four independent endpoint pairs: `CABLE-A Input` / `CABLE-A Output` through `CABLE-D Input` / `CABLE-D Output`.
+The release ZIP contains one x64 Windows test driver package and `VirtualCableManager.exe`. It creates four independent endpoint pairs: `CABLE-A Input` / `CABLE-A Output` through `CABLE-D Input` / `CABLE-D Output`.
+
+Run `VirtualCableManager.exe` to see endpoint status, refresh detection, or install/uninstall the driver. Install and uninstall request administrator approval. The ZIP includes the PowerShell helper and DevCon utility used by the manager.
 
 ## Install on a test machine
 
@@ -9,7 +11,7 @@ This is a test-signed kernel driver, not a production-signed public release. Use
 1. Extract the entire ZIP to a local folder.
 2. Open an elevated Command Prompt and run `bcdedit /set TESTSIGNING ON`.
 3. Reboot Windows. Secure Boot may need to be disabled for test-signing mode.
-4. Open elevated PowerShell in the extracted folder and run `powershell -ExecutionPolicy Bypass -File Install-Cable.ps1`.
+4. Run `VirtualCableManager.exe` and choose **Install driver**, then approve the Windows administrator prompt. Alternatively, use elevated PowerShell: `powershell -ExecutionPolicy Bypass -File Install-Cable.ps1`.
 5. In Windows Sound settings, confirm that all eight endpoints are present: four playback devices and four recording devices.
 
 ## Verify the audio paths
@@ -24,6 +26,6 @@ The driver currently supports stereo 48 kHz, 16-bit PCM playback and mono 48 kHz
 
 ## Uninstall
 
-From elevated PowerShell in the extracted folder, run `powershell -ExecutionPolicy Bypass -File Install-Cable.ps1 -Uninstall`. Turn test signing off with `bcdedit /set TESTSIGNING OFF` and reboot after testing.
+Choose **Uninstall** in `VirtualCableManager.exe`, or run `powershell -ExecutionPolicy Bypass -File Install-Cable.ps1 -Uninstall` from elevated PowerShell. Turn test signing off with `bcdedit /set TESTSIGNING OFF` and reboot after testing.
 
 The driver is based on Microsoft's SysVAD sample. Microsoft and WIL license notices are included in the ZIP.
