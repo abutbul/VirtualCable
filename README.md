@@ -4,10 +4,10 @@ This repository contains an early Windows virtual audio driver based on Microsof
 
 ## Endpoints
 
-- `CABLE Input` is the playback endpoint. Applications send audio to it.
-- `CABLE Output` is the recording endpoint. Capture applications receive the routed audio.
+- `CABLE-A Input` through `CABLE-D Input` are the playback endpoints.
+- `CABLE-A Output` through `CABLE-D Output` are the corresponding recording endpoints.
 
-The current driver path supports stereo 48 kHz, 16-bit PCM playback and mono 48 kHz, 16-bit PCM recording. Rendered frames pass through a shared nonpaged ring buffer; the recording endpoint downmixes stereo to mono. A render loopback stream has its own ring reader.
+The current driver path supports stereo 48 kHz, 16-bit PCM playback and mono 48 kHz, 16-bit PCM recording. Each cable has an independent nonpaged ring buffer; the matching recording endpoint downmixes stereo to mono. Each render loopback stream reads its cable's ring independently.
 
 ## Driver status
 
@@ -27,4 +27,4 @@ Build the kernel driver on Windows with Visual Studio and the Windows Driver Kit
 
 ## Single package
 
-GitHub Actions publishes one ZIP, `VirtualCable-Driver-TestSigned-win-x64.zip`. It is test-signed for use on a dedicated test machine, not production-signed for general distribution. See [drivers/README.md](drivers/README.md) for test-signing, install, and uninstall instructions.
+GitHub Actions publishes one ZIP, `VirtualCable-Driver-TestSigned-win-x64.zip`. It is test-signed for use on a dedicated test machine, not production-signed for general distribution. Tagged test releases are prereleases. See [drivers/README.md](drivers/README.md) for installation, signal, and cable-isolation checks.

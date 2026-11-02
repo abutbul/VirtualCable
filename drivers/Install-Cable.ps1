@@ -48,4 +48,4 @@ Import-Certificate -FilePath $certificatePath -CertStoreLocation "Cert:\LocalMac
 & $devcon install $infPath $hardwareId
 if ($LASTEXITCODE -ne 0) { throw "DevCon failed to install the virtual audio driver." }
 
-Write-Host "Installed test driver. Windows Sound settings should show CABLE Input (playback) and CABLE Output (recording)."
+Write-Host "Installed test driver. Windows Sound settings should show CABLE-A/B/C/D Input (playback) and CABLE-A/B/C/D Output (recording)."

@@ -281,6 +281,11 @@ protected:
 public:
     DECLARE_STD_UNKNOWN();
 
+    ULONG GetVirtualCableIndex() const
+    {
+        return m_pMiniportPair->VirtualCableIndex;
+    }
+
 #pragma code_seg("PAGE")
     CMiniportWaveRT(
         _In_            PUNKNOWN                                UnknownAdapter,

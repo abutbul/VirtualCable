@@ -5,13 +5,17 @@ namespace VBCableAlternative.Tests;
 public class VirtualCableCatalogTests
 {
     [Fact]
-    public void BuildDefaultRoutes_CreatesManualPlaybackAndRecordingEndpoints()
+    public void BuildDefaultRoutes_CreatesFourIndependentManualEndpointPairs()
     {
         var routes = VirtualCableCatalog.BuildDefaultRoutes();
 
-        var route = Assert.Single(routes);
-        Assert.Equal("VB-CABLE", route.Name);
-        Assert.Equal("CABLE Input", route.InputDevice);
-        Assert.Equal("CABLE Output", route.OutputDevice);
+        Assert.Equal(4, routes.Count);
+        for (var index = 0; index < routes.Count; index++)
+        {
+            var cableId = ((char)('A' + index)).ToString();
+            Assert.Equal($"CABLE-{cableId}", routes[index].Name);
+            Assert.Equal($"CABLE-{cableId} Input", routes[index].InputDevice);
+            Assert.Equal($"CABLE-{cableId} Output", routes[index].OutputDevice);
+        }
     }
 }

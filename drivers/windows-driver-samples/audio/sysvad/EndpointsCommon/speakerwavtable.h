@@ -52,7 +52,7 @@ Abstract:
 //
 #define SPEAKER_MAX_INPUT_SYSTEM_STREAMS            1
 #define SPEAKER_MAX_INPUT_OFFLOAD_STREAMS           MAX_INPUT_OFFLOAD_STREAMS
-#define SPEAKER_MAX_OUTPUT_LOOPBACK_STREAMS         MAX_OUTPUT_LOOPBACK_STREAMS
+#define SPEAKER_MAX_OUTPUT_LOOPBACK_STREAMS         1
 
 //=============================================================================
 static 

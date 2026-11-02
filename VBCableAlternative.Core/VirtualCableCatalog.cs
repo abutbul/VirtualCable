@@ -13,27 +13,32 @@ public static class VirtualCableCatalog
 {
     public static IReadOnlyList<string> GetExampleInputDevices() => new[]
     {
-        "CABLE Input",
+        "CABLE-A Input",
+        "CABLE-B Input",
+        "CABLE-C Input",
+        "CABLE-D Input",
         "Microphone (USB)",
         "System Default Input"
     };
 
     public static IReadOnlyList<string> GetExampleOutputDevices() => new[]
     {
-        "CABLE Output",
+        "CABLE-A Output",
+        "CABLE-B Output",
+        "CABLE-C Output",
+        "CABLE-D Output",
         "Speakers (Realtek)",
         "Headphones (USB)"
     };
 
-    public static IReadOnlyList<VirtualCableRoute> BuildDefaultRoutes() => new[]
-    {
-        new VirtualCableRoute
+    public static IReadOnlyList<VirtualCableRoute> BuildDefaultRoutes() => new[] { "A", "B", "C", "D" }
+        .Select(id => new VirtualCableRoute
         {
-            Name = "VB-CABLE",
-            Summary = "Playback audio sent to CABLE Input is exposed to recording apps through CABLE Output.",
-            InputDevice = "CABLE Input",
-            OutputDevice = "CABLE Output",
+            Name = $"CABLE-{id}",
+            Summary = $"Routes playback from CABLE-{id} Input to recording endpoint CABLE-{id} Output.",
+            InputDevice = $"CABLE-{id} Input",
+            OutputDevice = $"CABLE-{id} Output",
             Enabled = true
-        }
-    };
+        })
+        .ToArray();
 }

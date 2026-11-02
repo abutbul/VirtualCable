@@ -53,9 +53,20 @@ jobs:
             Select-Object -First 1
           if (-not $catalog) { throw "The WDK build did not produce sysvad.cat in a package directory." }
 
+          $packageDir = $catalog.DirectoryName
+          foreach ($requiredFile in @("TabletAudioSample.sys", "ComponentizedAudioSample.inf", "sysvad.cat")) {
+            if (-not (Test-Path (Join-Path $packageDir $requiredFile))) { throw "Driver package is missing $requiredFile." }
+          }
+          $infText = Get-Content (Join-Path $packageDir "ComponentizedAudioSample.inf") -Raw
+          foreach ($endpointName in @(
+            "CABLE-A Input", "CABLE-A Output", "CABLE-B Input", "CABLE-B Output",
+            "CABLE-C Input", "CABLE-C Output", "CABLE-D Input", "CABLE-D Output")) {
+            if (-not $infText.Contains($endpointName)) { throw "Generated INF is missing endpoint $endpointName." }
+          }
+
           $stageDir = Join-Path $env:GITHUB_WORKSPACE "artifacts/VirtualCable-Driver-TestSigned-win-x64"
           New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
-          Get-ChildItem $catalog.DirectoryName -Force | Copy-Item -Destination $stageDir -Recurse -Force
+          Get-ChildItem $packageDir -Force | Copy-Item -Destination $stageDir -Recurse -Force
 
           $certificate = New-SelfSignedCertificate `
             -Type CodeSigningCert `
@@ -80,7 +91,7 @@ jobs:
 
           $zipPath = Join-Path $env:GITHUB_WORKSPACE "VirtualCable-Driver-TestSigned-win-x64.zip"
           Compress-Archive -Path (Join-Path $stageDir '*') -DestinationPath $zipPath -Force
-          Write-Host "Driver package: $($catalog.DirectoryName)"
+          Write-Host "Driver package: $packageDir"
           Write-Host "ZIP: $zipPath"
 
       - name: Upload single test driver artifact
@@ -108,4 +119,5 @@ jobs:
           files: release-assets/virtual-cable-driver-test-signed-win-x64/VirtualCable-Driver-TestSigned-win-x64.zip
           overwrite_files: true
           generate_release_notes: true
-          make_latest: true
+          prerelease: true
+          make_latest: false

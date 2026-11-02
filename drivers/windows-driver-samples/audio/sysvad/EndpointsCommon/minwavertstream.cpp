@@ -13,6 +13,7 @@
 static const ULONG VIRTUAL_CABLE_FRAME_COUNT = 32768;
 static const ULONGLONG VIRTUAL_CABLE_TARGET_LATENCY_FRAMES = 7168;
 static const ULONG VIRTUAL_CABLE_READER_COUNT = 2;
+static const ULONG VIRTUAL_CABLE_COUNT = 4;
 
 typedef struct _VIRTUAL_CABLE_FRAME
 {
@@ -21,28 +22,34 @@ typedef struct _VIRTUAL_CABLE_FRAME
 } VIRTUAL_CABLE_FRAME;
 
 static KSPIN_LOCK g_VirtualCableLock;
-static VIRTUAL_CABLE_FRAME g_VirtualCableFrames[VIRTUAL_CABLE_FRAME_COUNT];
-static ULONGLONG g_VirtualCableWriteFrame;
-static ULONGLONG g_VirtualCableReadFrames[VIRTUAL_CABLE_READER_COUNT];
-static ULONGLONG g_VirtualCableDroppedFrames;
-static ULONGLONG g_VirtualCableUnderflowFrames;
+static VIRTUAL_CABLE_FRAME g_VirtualCableFrames[VIRTUAL_CABLE_COUNT][VIRTUAL_CABLE_FRAME_COUNT];
+static ULONGLONG g_VirtualCableWriteFrame[VIRTUAL_CABLE_COUNT];
+static ULONGLONG g_VirtualCableReadFrames[VIRTUAL_CABLE_COUNT][VIRTUAL_CABLE_READER_COUNT];
+static ULONGLONG g_VirtualCableDroppedFrames[VIRTUAL_CABLE_COUNT];
+static ULONGLONG g_VirtualCableUnderflowFrames[VIRTUAL_CABLE_COUNT];
 
 VOID InitializeVirtualCableBuffer()
 {
     KeInitializeSpinLock(&g_VirtualCableLock);
     RtlZeroMemory(g_VirtualCableFrames, sizeof(g_VirtualCableFrames));
-    g_VirtualCableWriteFrame = 0;
+    RtlZeroMemory(g_VirtualCableWriteFrame, sizeof(g_VirtualCableWriteFrame));
     RtlZeroMemory(g_VirtualCableReadFrames, sizeof(g_VirtualCableReadFrames));
-    g_VirtualCableDroppedFrames = 0;
-    g_VirtualCableUnderflowFrames = 0;
+    RtlZeroMemory(g_VirtualCableDroppedFrames, sizeof(g_VirtualCableDroppedFrames));
+    RtlZeroMemory(g_VirtualCableUnderflowFrames, sizeof(g_VirtualCableUnderflowFrames));
 }
 
 static VOID StoreVirtualCableFrames
 (
     _In_reads_bytes_(FrameCount * sizeof(VIRTUAL_CABLE_FRAME)) const BYTE* Source,
-    _In_ ULONG FrameCount
+    _In_ ULONG FrameCount,
+    _In_ ULONG CableIndex
 )
 {
+    if (CableIndex >= VIRTUAL_CABLE_COUNT)
+    {
+        return;
+    }
+
     if (FrameCount > VIRTUAL_CABLE_FRAME_COUNT)
     {
         ULONG skippedFrames = FrameCount - VIRTUAL_CABLE_FRAME_COUNT;
@@ -53,30 +60,30 @@ static VOID StoreVirtualCableFrames
     KIRQL oldIrql;
     KeAcquireSpinLock(&g_VirtualCableLock, &oldIrql);
 
-    ULONG ringIndex = (ULONG)(g_VirtualCableWriteFrame % VIRTUAL_CABLE_FRAME_COUNT);
+    ULONG ringIndex = (ULONG)(g_VirtualCableWriteFrame[CableIndex] % VIRTUAL_CABLE_FRAME_COUNT);
     ULONG firstFrameCount = min(FrameCount, VIRTUAL_CABLE_FRAME_COUNT - ringIndex);
     ULONG secondFrameCount = FrameCount - firstFrameCount;
 
     RtlCopyMemory(
-        &g_VirtualCableFrames[ringIndex],
+        &g_VirtualCableFrames[CableIndex][ringIndex],
         Source,
         firstFrameCount * sizeof(VIRTUAL_CABLE_FRAME));
 
     if (secondFrameCount > 0)
     {
         RtlCopyMemory(
-            &g_VirtualCableFrames[0],
+            &g_VirtualCableFrames[CableIndex][0],
             Source + firstFrameCount * sizeof(VIRTUAL_CABLE_FRAME),
             secondFrameCount * sizeof(VIRTUAL_CABLE_FRAME));
     }
 
-    g_VirtualCableWriteFrame += FrameCount;
+    g_VirtualCableWriteFrame[CableIndex] += FrameCount;
     for (ULONG reader = 0; reader < VIRTUAL_CABLE_READER_COUNT; reader++)
     {
-        if (g_VirtualCableWriteFrame - g_VirtualCableReadFrames[reader] > VIRTUAL_CABLE_FRAME_COUNT)
+        if (g_VirtualCableWriteFrame[CableIndex] - g_VirtualCableReadFrames[CableIndex][reader] > VIRTUAL_CABLE_FRAME_COUNT)
         {
-            g_VirtualCableReadFrames[reader] = g_VirtualCableWriteFrame - VIRTUAL_CABLE_FRAME_COUNT;
-            g_VirtualCableDroppedFrames++;
+            g_VirtualCableReadFrames[CableIndex][reader] = g_VirtualCableWriteFrame[CableIndex] - VIRTUAL_CABLE_FRAME_COUNT;
+            g_VirtualCableDroppedFrames[CableIndex]++;
         }
     }
 
@@ -89,14 +96,21 @@ static VOID ReadVirtualCableFrames
     _In_ ULONG FrameCount,
     _In_ ULONG Channels,
     _In_ ULONG BytesPerFrame,
-    _In_ ULONG ReaderIndex
+    _In_ ULONG ReaderIndex,
+    _In_ ULONG CableIndex
 )
 {
+    if (CableIndex >= VIRTUAL_CABLE_COUNT || ReaderIndex >= VIRTUAL_CABLE_READER_COUNT)
+    {
+        RtlZeroMemory(Destination, FrameCount * BytesPerFrame);
+        return;
+    }
+
     ULONG framesToRead = 0;
     KIRQL oldIrql;
     KeAcquireSpinLock(&g_VirtualCableLock, &oldIrql);
 
-    ULONGLONG availableFrames = g_VirtualCableWriteFrame - g_VirtualCableReadFrames[ReaderIndex];
+    ULONGLONG availableFrames = g_VirtualCableWriteFrame[CableIndex] - g_VirtualCableReadFrames[CableIndex][ReaderIndex];
     if (availableFrames > VIRTUAL_CABLE_TARGET_LATENCY_FRAMES)
     {
         ULONGLONG readyFrames = availableFrames - VIRTUAL_CABLE_TARGET_LATENCY_FRAMES;
@@ -105,8 +119,8 @@ static VOID ReadVirtualCableFrames
 
     for (ULONG frame = 0; frame < framesToRead; frame++)
     {
-        ULONG ringIndex = (ULONG)(g_VirtualCableReadFrames[ReaderIndex] % VIRTUAL_CABLE_FRAME_COUNT);
-        VIRTUAL_CABLE_FRAME sample = g_VirtualCableFrames[ringIndex];
+        ULONG ringIndex = (ULONG)(g_VirtualCableReadFrames[CableIndex][ReaderIndex] % VIRTUAL_CABLE_FRAME_COUNT);
+        VIRTUAL_CABLE_FRAME sample = g_VirtualCableFrames[CableIndex][ringIndex];
         BYTE* output = Destination + frame * BytesPerFrame;
 
         if (Channels == 1)
@@ -119,10 +133,10 @@ static VOID ReadVirtualCableFrames
             RtlCopyMemory(output, &sample, sizeof(sample));
         }
 
-        g_VirtualCableReadFrames[ReaderIndex]++;
+        g_VirtualCableReadFrames[CableIndex][ReaderIndex]++;
     }
 
-    g_VirtualCableUnderflowFrames += FrameCount - framesToRead;
+    g_VirtualCableUnderflowFrames[CableIndex] += FrameCount - framesToRead;
     KeReleaseSpinLock(&g_VirtualCableLock, oldIrql);
 
     if (framesToRead < FrameCount)
@@ -1626,6 +1640,7 @@ ByteDisplacement - # of bytes to process.
     ULONG bytesPerFrame = m_pWfExt->Format.nBlockAlign;
     ULONG channels = m_pWfExt->Format.nChannels;
     ULONG readerIndex = m_pMiniport->IsLoopbackPin(m_ulPin) ? 1 : 0;
+    ULONG cableIndex = m_pMiniport->GetVirtualCableIndex();
     ULONG bufferOffset = m_ullLinearPosition % m_ulDmaBufferSize;
 
     while (ByteDisplacement > 0)
@@ -1642,7 +1657,8 @@ ByteDisplacement - # of bytes to process.
             runWrite / bytesPerFrame,
             channels,
             bytesPerFrame,
-            readerIndex);
+            readerIndex,
+            cableIndex);
         bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
         ByteDisplacement -= runWrite;
     }
@@ -1672,6 +1688,7 @@ ByteDisplacement - # of bytes to process.
     }
 
     ULONG bytesPerFrame = m_pWfExt->Format.nBlockAlign;
+    ULONG cableIndex = m_pMiniport->GetVirtualCableIndex();
     ULONG bufferOffset = m_ullLinearPosition % m_ulDmaBufferSize;
 
     while (ByteDisplacement > 0)
@@ -1683,7 +1700,7 @@ ByteDisplacement - # of bytes to process.
             return;
         }
 
-        StoreVirtualCableFrames(m_pDmaBuffer + bufferOffset, runWrite / bytesPerFrame);
+        StoreVirtualCableFrames(m_pDmaBuffer + bufferOffset, runWrite / bytesPerFrame, cableIndex);
         bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
         ByteDisplacement -= runWrite;
     }

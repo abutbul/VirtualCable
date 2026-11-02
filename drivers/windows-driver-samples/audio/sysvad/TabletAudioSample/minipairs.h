@@ -184,6 +184,64 @@ ENDPOINT_MINIPAIR SpeakerMiniports =
     SpeakerModulesWaveFilter, 
     SIZEOF_ARRAY(SpeakerModulesWaveFilter),
     &SpeakerModuleNotificationDeviceId,
+    0,
+};
+
+static
+ENDPOINT_MINIPAIR SpeakerBMiniports =
+{
+    eSpeakerDevice,
+    L"TopologySpeakerB", NULL,
+    CreateMiniportTopologySYSVAD, &SpeakerTopoMiniportFilterDescriptor,
+    0, NULL,
+    L"WaveSpeakerB", NULL,
+    CreateMiniportWaveRTSYSVAD, &SpeakerWaveMiniportFilterDescriptor,
+    ARRAYSIZE(SysvadWaveFilterInterfacePropertiesRender), SysvadWaveFilterInterfacePropertiesRender,
+    SPEAKER_DEVICE_MAX_CHANNELS,
+    SpeakerPinDeviceFormatsAndModes, SIZEOF_ARRAY(SpeakerPinDeviceFormatsAndModes),
+    SpeakerTopologyPhysicalConnections, SIZEOF_ARRAY(SpeakerTopologyPhysicalConnections),
+    ENDPOINT_LOOPBACK_SUPPORTED,
+    SpeakerModulesWaveFilter, SIZEOF_ARRAY(SpeakerModulesWaveFilter),
+    &SpeakerModuleNotificationDeviceId,
+    1,
+};
+
+static
+ENDPOINT_MINIPAIR SpeakerCMiniports =
+{
+    eSpeakerDevice,
+    L"TopologySpeakerC", NULL,
+    CreateMiniportTopologySYSVAD, &SpeakerTopoMiniportFilterDescriptor,
+    0, NULL,
+    L"WaveSpeakerC", NULL,
+    CreateMiniportWaveRTSYSVAD, &SpeakerWaveMiniportFilterDescriptor,
+    ARRAYSIZE(SysvadWaveFilterInterfacePropertiesRender), SysvadWaveFilterInterfacePropertiesRender,
+    SPEAKER_DEVICE_MAX_CHANNELS,
+    SpeakerPinDeviceFormatsAndModes, SIZEOF_ARRAY(SpeakerPinDeviceFormatsAndModes),
+    SpeakerTopologyPhysicalConnections, SIZEOF_ARRAY(SpeakerTopologyPhysicalConnections),
+    ENDPOINT_LOOPBACK_SUPPORTED,
+    SpeakerModulesWaveFilter, SIZEOF_ARRAY(SpeakerModulesWaveFilter),
+    &SpeakerModuleNotificationDeviceId,
+    2,
+};
+
+static
+ENDPOINT_MINIPAIR SpeakerDMiniports =
+{
+    eSpeakerDevice,
+    L"TopologySpeakerD", NULL,
+    CreateMiniportTopologySYSVAD, &SpeakerTopoMiniportFilterDescriptor,
+    0, NULL,
+    L"WaveSpeakerD", NULL,
+    CreateMiniportWaveRTSYSVAD, &SpeakerWaveMiniportFilterDescriptor,
+    ARRAYSIZE(SysvadWaveFilterInterfacePropertiesRender), SysvadWaveFilterInterfacePropertiesRender,
+    SPEAKER_DEVICE_MAX_CHANNELS,
+    SpeakerPinDeviceFormatsAndModes, SIZEOF_ARRAY(SpeakerPinDeviceFormatsAndModes),
+    SpeakerTopologyPhysicalConnections, SIZEOF_ARRAY(SpeakerTopologyPhysicalConnections),
+    ENDPOINT_LOOPBACK_SUPPORTED,
+    SpeakerModulesWaveFilter, SIZEOF_ARRAY(SpeakerModulesWaveFilter),
+    &SpeakerModuleNotificationDeviceId,
+    3,
 };
 
 /*********************************************************************
@@ -369,6 +427,61 @@ ENDPOINT_MINIPAIR MicInMiniports =
     SIZEOF_ARRAY(MicInTopologyPhysicalConnections),
     ENDPOINT_NO_FLAGS,
     NULL, 0, NULL,                          // audio module settings.
+    0,
+};
+
+static
+ENDPOINT_MINIPAIR MicBMiniports =
+{
+    eMicInDevice,
+    L"TopologyMicInB", NULL,
+    CreateMiniportTopologySYSVAD, &MicInTopoMiniportFilterDescriptor,
+    0, NULL,
+    L"WaveMicInB", NULL,
+    CreateMiniportWaveRTSYSVAD, &MicInWaveMiniportFilterDescriptor,
+    0, NULL,
+    MICIN_DEVICE_MAX_CHANNELS,
+    MicInPinDeviceFormatsAndModes, SIZEOF_ARRAY(MicInPinDeviceFormatsAndModes),
+    MicInTopologyPhysicalConnections, SIZEOF_ARRAY(MicInTopologyPhysicalConnections),
+    ENDPOINT_NO_FLAGS,
+    NULL, 0, NULL,
+    1,
+};
+
+static
+ENDPOINT_MINIPAIR MicCMiniports =
+{
+    eMicInDevice,
+    L"TopologyMicInC", NULL,
+    CreateMiniportTopologySYSVAD, &MicInTopoMiniportFilterDescriptor,
+    0, NULL,
+    L"WaveMicInC", NULL,
+    CreateMiniportWaveRTSYSVAD, &MicInWaveMiniportFilterDescriptor,
+    0, NULL,
+    MICIN_DEVICE_MAX_CHANNELS,
+    MicInPinDeviceFormatsAndModes, SIZEOF_ARRAY(MicInPinDeviceFormatsAndModes),
+    MicInTopologyPhysicalConnections, SIZEOF_ARRAY(MicInTopologyPhysicalConnections),
+    ENDPOINT_NO_FLAGS,
+    NULL, 0, NULL,
+    2,
+};
+
+static
+ENDPOINT_MINIPAIR MicDMiniports =
+{
+    eMicInDevice,
+    L"TopologyMicInD", NULL,
+    CreateMiniportTopologySYSVAD, &MicInTopoMiniportFilterDescriptor,
+    0, NULL,
+    L"WaveMicInD", NULL,
+    CreateMiniportWaveRTSYSVAD, &MicInWaveMiniportFilterDescriptor,
+    0, NULL,
+    MICIN_DEVICE_MAX_CHANNELS,
+    MicInPinDeviceFormatsAndModes, SIZEOF_ARRAY(MicInPinDeviceFormatsAndModes),
+    MicInTopologyPhysicalConnections, SIZEOF_ARRAY(MicInTopologyPhysicalConnections),
+    ENDPOINT_NO_FLAGS,
+    NULL, 0, NULL,
+    3,
 };
 
 /*********************************************************************
@@ -510,6 +623,9 @@ static
 PENDPOINT_MINIPAIR  g_RenderEndpoints[] = 
 {
     &SpeakerMiniports,
+    &SpeakerBMiniports,
+    &SpeakerCMiniports,
+    &SpeakerDMiniports,
 };
 
 #define g_cRenderEndpoints  (SIZEOF_ARRAY(g_RenderEndpoints))
@@ -522,6 +638,9 @@ static
 PENDPOINT_MINIPAIR  g_CaptureEndpoints[] = 
 {
     &MicInMiniports,
+    &MicBMiniports,
+    &MicCMiniports,
+    &MicDMiniports,
 };
 
 #define g_cCaptureEndpoints (SIZEOF_ARRAY(g_CaptureEndpoints))

@@ -409,6 +409,7 @@ typedef struct _ENDPOINT_MINIPAIR
     AUDIOMODULE_DESCRIPTOR *        ModuleList;
     ULONG                           ModuleListCount;
     const GUID *                    ModuleNotificationDeviceId;
+    ULONG                           VirtualCableIndex;
 } ENDPOINT_MINIPAIR;
 
 //=============================================================================
