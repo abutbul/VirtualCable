@@ -1,4 +1,4 @@
-name: Build VB-Cable prototype
+name: Build VB-CABLE driver
 
 on:
   push:
@@ -11,57 +11,93 @@ permissions:
   contents: write
 
 jobs:
-  build-prototype:
-    name: Build Windows prototype
-    runs-on: windows-latest
+  build-driver:
+    name: Build and package test-signed x64 driver
+    runs-on: windows-2022
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v5
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 9.0.x
 
-      - name: Restore dependencies
-        run: dotnet restore VBCableAlternative.sln /p:EnableWindowsTargeting=true
+      - name: Run catalog tests
+        run: dotnet test VBCableAlternative.sln /p:EnableWindowsTargeting=true --nologo
 
-      - name: Publish prototype for Windows
+      - name: Validate installer script
         shell: pwsh
         run: |
-          $publishDir = Join-Path $env:GITHUB_WORKSPACE "publish/win-x64"
-          New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            "drivers/Install-Cable.ps1",
+            [ref]$tokens,
+            [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { $errors | Format-List; throw "Installer script syntax is invalid." }
 
-          dotnet publish VBCableAlternative.App/VBCableAlternative.App.csproj `
-            --configuration Release `
-            --runtime win-x64 `
-            --self-contained false `
-            --output $publishDir `
-            /p:EnableWindowsTargeting=true
+      - name: Build SysVAD driver package
+        shell: pwsh
+        run: |
+          $solution = Join-Path $env:GITHUB_WORKSPACE "drivers/windows-driver-samples/audio/sysvad/sysvad.sln"
+          msbuild $solution /m /t:Build /p:Configuration=Release /p:Platform=x64 /p:SignMode=Off /v:minimal
+          if ($LASTEXITCODE -ne 0) { throw "SysVAD driver build failed." }
 
-          $zipPath = Join-Path $env:GITHUB_WORKSPACE "VirtualCable-Prototype-win-x64.zip"
-          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-          Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $zipPath -Force
+          $catalog = Get-ChildItem (Split-Path $solution) -Recurse -Filter sysvad.cat |
+            Where-Object { $_.FullName -match '[\\/]package[\\/]' } |
+            Select-Object -First 1
+          if (-not $catalog) { throw "The WDK build did not produce sysvad.cat in a package directory." }
 
-          Get-ChildItem $publishDir | Select-Object FullName
-          Write-Host "ZIP=$zipPath"
+          $stageDir = Join-Path $env:GITHUB_WORKSPACE "artifacts/VirtualCable-Driver-TestSigned-win-x64"
+          New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
+          Get-ChildItem $catalog.DirectoryName -Force | Copy-Item -Destination $stageDir -Recurse -Force
 
-      - name: Upload single prototype artifact
+          $certificate = New-SelfSignedCertificate `
+            -Type CodeSigningCert `
+            -Subject "CN=VirtualCable Local Test Signing" `
+            -CertStoreLocation "Cert:\CurrentUser\My"
+          $certificatePath = Join-Path $stageDir "VirtualCable-TestCertificate.cer"
+          Export-Certificate -Cert $certificate -FilePath $certificatePath | Out-Null
+
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if (-not $signtool) { throw "Windows SDK signtool.exe was not found." }
+          $stagedCatalog = Join-Path $stageDir "sysvad.cat"
+          if (-not (Test-Path $stagedCatalog)) { throw "sysvad.cat was not copied into the package stage." }
+          & $signtool.FullName sign /v /fd SHA256 /s My /sha1 $certificate.Thumbprint $stagedCatalog
+          if ($LASTEXITCODE -ne 0) { throw "Test-signing the driver catalog failed." }
+
+          Copy-Item "drivers/Install-Cable.ps1" $stageDir
+          Copy-Item "drivers/README.md" $stageDir
+          Copy-Item "drivers/windows-driver-samples/LICENSE" $stageDir
+          Copy-Item "drivers/windows-driver-samples/wil/LICENSE" (Join-Path $stageDir "WIL-LICENSE")
+
+          $zipPath = Join-Path $env:GITHUB_WORKSPACE "VirtualCable-Driver-TestSigned-win-x64.zip"
+          Compress-Archive -Path (Join-Path $stageDir '*') -DestinationPath $zipPath -Force
+          Write-Host "Driver package: $($catalog.DirectoryName)"
+          Write-Host "ZIP: $zipPath"
+
+      - name: Upload single test driver artifact
         uses: actions/upload-artifact@v4
         with:
-          name: virtual-cable-prototype-win-x64
-          path: VirtualCable-Prototype-win-x64.zip
+          name: virtual-cable-driver-test-signed-win-x64
+          path: VirtualCable-Driver-TestSigned-win-x64.zip
           if-no-files-found: error
 
   release:
     name: Publish GitHub release assets
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build-prototype
+    needs: build-driver
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download prototype artifact
+      - name: Download driver artifact
         uses: actions/download-artifact@v4
         with:
           path: release-assets
@@ -69,7 +105,7 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: release-assets/virtual-cable-prototype-win-x64/VirtualCable-Prototype-win-x64.zip
+          files: release-assets/virtual-cable-driver-test-signed-win-x64/VirtualCable-Driver-TestSigned-win-x64.zip
           overwrite_files: true
           generate_release_notes: true
           make_latest: true
