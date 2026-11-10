@@ -10,9 +10,11 @@ This is a test-signed kernel driver, not a production-signed public release. Use
 
 1. Extract the entire ZIP to a local folder.
 2. Open an elevated Command Prompt and run `bcdedit /set TESTSIGNING ON`.
-3. Reboot Windows. Secure Boot may need to be disabled for test-signing mode.
-4. Run `VirtualCableManager.exe` and choose **Install driver**, then approve the Windows administrator prompt. Alternatively, use elevated PowerShell: `powershell -ExecutionPolicy Bypass -File Install-Cable.ps1`.
+3. Reboot Windows. If Windows blocks enabling test signing because of Secure Boot, disable Secure Boot in firmware only on the dedicated test machine. Check that the BitLocker recovery key is available before changing firmware security settings.
+4. Run `VirtualCableManager.exe` and choose **Install driver**, then approve the Windows administrator prompt. The installer imports the included test certificate into the Local Machine Trusted Root and Trusted Publishers stores; there is no separate certificate-install step. This is machine-wide trust for a test-only certificate. Alternatively, use elevated PowerShell: `powershell -ExecutionPolicy Bypass -File Install-Cable.ps1`.
 5. In Windows Sound settings, confirm that all eight endpoints are present: four playback devices and four recording devices.
+
+If installation fails, the manager displays the install transcript and its path under `%TEMP%`. Running the PowerShell helper directly writes `%TEMP%\VirtualCable-Install.log`. Windows also records driver installation details in `%WINDIR%\inf\setupapi.dev.log`. After testing, uninstall the driver and remove the `VirtualCable Local Test Signing` certificate from Local Computer Trusted Root Certification Authorities and Trusted Publishers if it is no longer needed.
 
 ## Verify the audio paths
 
@@ -21,6 +23,17 @@ This is a test-signed kernel driver, not a production-signed public release. Use
 3. Repeat with matching B, C, and D endpoints.
 4. Check isolation: send audio only to `CABLE-A Input`, monitor all four outputs, and confirm only `CABLE-A Output` receives it. Repeat for B, C, and D.
 5. Test WASAPI loopback capture on each cable's playback endpoint separately from recording capture.
+
+Steps 2–5 are automated by `tools/cable_e2e_test.py` (needs `pip install numpy soundcard`):
+
+```
+python tools/cable_e2e_test.py list          # all 8 endpoints present?
+python tools/cable_e2e_test.py passthrough   # signal, isolation and latency for A–D
+python tools/cable_e2e_test.py loopback      # WASAPI loopback on each CABLE-x Input
+python tools/cable_e2e_test.py ft8 --wav 000000_000001.wav --cable A   # FT8 through the cable, decoded by WSJT-X jt9
+```
+
+Keep each `CABLE-x Input` volume at 100% in Windows; the playback volume scales the signal.
 
 The driver currently supports stereo 48 kHz, 16-bit PCM playback and mono 48 kHz, 16-bit PCM recording. Other rates, bit depths, channel counts, persistent latency configuration, and the reference manual's statistics/control panel are not implemented. A successful build alone does not establish that endpoint creation or pass-through works; record the Windows version, endpoint list, and signal/isolation results when testing.
 

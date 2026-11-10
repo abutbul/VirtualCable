@@ -105,7 +105,8 @@ namespace VBCableAlternative.App
 
             try
             {
-                var arguments = $"-ExecutionPolicy Bypass -File \"{_installerPath}\"" + (uninstall ? " -Uninstall" : string.Empty);
+                var logPath = Path.Combine(Path.GetTempPath(), $"VirtualCable-{(uninstall ? "uninstall" : "install")}-{Guid.NewGuid():N}.log");
+                var arguments = $"-ExecutionPolicy Bypass -File \"{_installerPath}\" -LogPath \"{logPath}\"" + (uninstall ? " -Uninstall" : string.Empty);
                 var startInfo = new ProcessStartInfo("powershell.exe", arguments)
                 {
                     UseShellExecute = true,
@@ -121,7 +122,17 @@ namespace VBCableAlternative.App
                 await process.WaitForExitAsync();
                 if (process.ExitCode != 0)
                 {
-                    throw new InvalidOperationException($"Installer exited with code {process.ExitCode}.");
+                    var details = File.Exists(logPath)
+                        ? await File.ReadAllTextAsync(logPath)
+                        : "The installer did not create a diagnostic log.";
+                    const int maxDetailsLength = 6000;
+                    if (details.Length > maxDetailsLength)
+                    {
+                        details = details[^maxDetailsLength..];
+                    }
+
+                    throw new InvalidOperationException(
+                        $"Installer exited with code {process.ExitCode}.\nLog: {logPath}\n\n{details}");
                 }
 
                 StatusText.Text = "Driver action completed. Refreshing endpoints...";

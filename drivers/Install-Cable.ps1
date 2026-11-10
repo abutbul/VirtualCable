@@ -1,8 +1,16 @@
 param(
-    [switch]$Uninstall
+    [switch]$Uninstall,
+    [string]$LogPath = (Join-Path $env:TEMP "VirtualCable-Install.log")
 )
 
 $ErrorActionPreference = "Stop"
+Start-Transcript -LiteralPath $LogPath -Force | Out-Null
+trap {
+    Write-Host "Installer failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Diagnostic log: $LogPath"
+    Stop-Transcript | Out-Null
+    exit 1
+}
 
 $currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = [Security.Principal.WindowsPrincipal]::new($currentIdentity)
@@ -30,7 +38,9 @@ if (-not $devcon) {
 
 if ($Uninstall) {
     & $devcon remove $hardwareId
-    if ($LASTEXITCODE -ne 0) { throw "DevCon failed to remove the virtual audio device." }
+    $devconExitCode = $LASTEXITCODE
+    if ($devconExitCode -ne 0) { throw "DevCon failed to remove the virtual audio device (exit code $devconExitCode)." }
+    Stop-Transcript | Out-Null
     exit 0
 }
 
@@ -38,7 +48,12 @@ if (-not (Test-Path $certificatePath) -or -not (Test-Path $infPath)) {
     throw "Extract the complete driver ZIP before running this script."
 }
 
-$testSigning = bcdedit /enum '{current}' | Select-String -Pattern "testsigning\s+Yes"
+$bcdOutput = & "$env:SystemRoot\System32\bcdedit.exe" /enum '{current}' 2>&1
+$bcdExitCode = $LASTEXITCODE
+if ($bcdExitCode -ne 0) {
+    throw "Could not query the boot configuration (exit code $bcdExitCode): $($bcdOutput -join ' ')"
+}
+$testSigning = $bcdOutput | Select-String -Pattern "testsigning\s+Yes"
 if (-not $testSigning) {
     throw "Test signing is not enabled. Run 'bcdedit /set TESTSIGNING ON' as administrator, reboot, then run this installer again. Secure Boot may need to be disabled on this test machine."
 }
@@ -47,6 +62,10 @@ Import-Certificate -FilePath $certificatePath -CertStoreLocation "Cert:\LocalMac
 Import-Certificate -FilePath $certificatePath -CertStoreLocation "Cert:\LocalMachine\TrustedPublisher" | Out-Null
 
 & $devcon install $infPath $hardwareId
-if ($LASTEXITCODE -ne 0) { throw "DevCon failed to install the virtual audio driver." }
+$devconExitCode = $LASTEXITCODE
+if ($devconExitCode -ne 0) {
+    throw "DevCon failed to install the virtual audio driver (exit code $devconExitCode). Review the DevCon output above and $env:SystemRoot\inf\setupapi.dev.log for the Windows driver-install error."
+}
 
 Write-Host "Installed test driver. Windows Sound settings should show CABLE-A/B/C/D Input (playback) and CABLE-A/B/C/D Output (recording)."
+Stop-Transcript | Out-Null

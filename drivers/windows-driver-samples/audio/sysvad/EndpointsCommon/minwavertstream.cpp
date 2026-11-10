@@ -12,6 +12,11 @@
 
 static const ULONG VIRTUAL_CABLE_FRAME_COUNT = 32768;
 static const ULONGLONG VIRTUAL_CABLE_TARGET_LATENCY_FRAMES = 7168;
+// A reader whose backlog grows past this (e.g. a capture client that opened after
+// playback had already been running) is resynchronized to the target latency.
+// Without this the backlog is never drained, because readers consume at exactly
+// the writer's rate, so latency would stay at up to the full ring (~680 ms).
+static const ULONGLONG VIRTUAL_CABLE_MAX_BACKLOG_FRAMES = VIRTUAL_CABLE_TARGET_LATENCY_FRAMES + 4800;
 static const ULONG VIRTUAL_CABLE_READER_COUNT = 2;
 static const ULONG VIRTUAL_CABLE_COUNT = 4;
 
@@ -111,6 +116,17 @@ static VOID ReadVirtualCableFrames
     KeAcquireSpinLock(&g_VirtualCableLock, &oldIrql);
 
     ULONGLONG availableFrames = g_VirtualCableWriteFrame[CableIndex] - g_VirtualCableReadFrames[CableIndex][ReaderIndex];
+    if (availableFrames > VIRTUAL_CABLE_MAX_BACKLOG_FRAMES)
+    {
+        // Keep exactly one read's worth above the target so this call still returns audio.
+        ULONGLONG keepFrames = VIRTUAL_CABLE_TARGET_LATENCY_FRAMES + FrameCount;
+        if (keepFrames < availableFrames)
+        {
+            g_VirtualCableReadFrames[CableIndex][ReaderIndex] = g_VirtualCableWriteFrame[CableIndex] - keepFrames;
+            g_VirtualCableDroppedFrames[CableIndex] += availableFrames - keepFrames;
+            availableFrames = keepFrames;
+        }
+    }
     if (availableFrames > VIRTUAL_CABLE_TARGET_LATENCY_FRAMES)
     {
         ULONGLONG readyFrames = availableFrames - VIRTUAL_CABLE_TARGET_LATENCY_FRAMES;
