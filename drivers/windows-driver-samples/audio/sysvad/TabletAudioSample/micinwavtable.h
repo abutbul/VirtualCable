@@ -27,7 +27,8 @@ Abstract:
 //
 // Max # of pin instances.
 //
-#define MICIN_MAX_INPUT_STREAMS             1
+#define MICIN_MAX_INPUT_STREAMS             5       // one per advertised processing mode (as upstream);
+                                                    // with 1, the audio engine cannot open the capture endpoint
 
 //=============================================================================
 static 

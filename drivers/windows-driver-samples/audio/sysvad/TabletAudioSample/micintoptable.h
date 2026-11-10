@@ -21,10 +21,7 @@ PropertyHandler_MicInTopoFilter(
     _In_ PPCPROPERTY_REQUEST      PropertyRequest 
     );
 
-//
-// {d48deb08-fd1c-4d1e-b821-9064d49ae96e}
-DEFINE_GUID(MICIN_CUSTOM_NAME, 
-0xd48deb08, 0xfd1c, 0x4d1e, 0xb8, 0x21, 0x90, 0x64, 0xd4, 0x9a, 0xe9, 0x6e);
+#include "cablenames.h"
 
 //=============================================================================
 static
@@ -62,51 +59,46 @@ PKSDATARANGE MicInTopoPinDataRangePointersBridge[] =
 };
 
 //=============================================================================
-static
-PCPIN_DESCRIPTOR MicInTopoMiniportPins[] =
-{
-  // KSPIN - topology filter in-pin
-  {
-    0,
-    0,
-    0,                                                  // InstanceCount
-    NULL,                                               // AutomationTable
-    {                                                   // KsPinDescriptor
-      0,                                                // InterfacesCount
-      NULL,                                             // Interfaces
-      0,                                                // MediumsCount
-      NULL,                                             // Mediums
-      SIZEOF_ARRAY(MicInTopoPinDataRangePointersBridge),// DataRangesCount
-      MicInTopoPinDataRangePointersBridge,              // DataRanges
-      KSPIN_DATAFLOW_IN,                                // DataFlow
-      KSPIN_COMMUNICATION_NONE,                         // Communication
-      &KSNODETYPE_MICROPHONE,                           // Category
-      &MICIN_CUSTOM_NAME,                               // Name
-      0                                                 // Reserved
-    }
-  },
+// One pin table per cable: identical except for the bridge (in) pin's Name GUID,
+// which Windows uses (via the INF's MediaCategories entries) as the endpoint name.
+#define MICIN_TOPO_MINIPORT_PINS(_EndpointName)                                 \
+{                                                                               \
+  /* KSPIN - topology filter in-pin (bridge pin: names the endpoint) */         \
+  {                                                                             \
+    0, 0, 0,                                            /* InstanceCount */     \
+    NULL,                                               /* AutomationTable */   \
+    {                                                                           \
+      0, NULL, 0, NULL,                                 /* Interfaces/Mediums */\
+      SIZEOF_ARRAY(MicInTopoPinDataRangePointersBridge),                        \
+      MicInTopoPinDataRangePointersBridge,                                      \
+      KSPIN_DATAFLOW_IN,                                                        \
+      KSPIN_COMMUNICATION_NONE,                                                 \
+      &KSNODETYPE_MICROPHONE,                           /* Category */          \
+      (_EndpointName),                                  /* Name */              \
+      0                                                                         \
+    }                                                                           \
+  },                                                                            \
+  /* KSPIN - topology filter out-pin */                                         \
+  {                                                                             \
+    0, 0, 0,                                            /* InstanceCount */     \
+    NULL,                                               /* AutomationTable */   \
+    {                                                                           \
+      0, NULL, 0, NULL,                                 /* Interfaces/Mediums */\
+      SIZEOF_ARRAY(MicInTopoPinDataRangePointersBridge),                        \
+      MicInTopoPinDataRangePointersBridge,                                      \
+      KSPIN_DATAFLOW_OUT,                                                       \
+      KSPIN_COMMUNICATION_NONE,                                                 \
+      &KSCATEGORY_AUDIO,                                /* Category */          \
+      NULL,                                             /* Name */              \
+      0                                                                         \
+    }                                                                           \
+  }                                                                             \
+}
 
-  // KSPIN - topology filter out-in
-  {
-    0,
-    0,
-    0,                                                  // InstanceCount
-    NULL,                                               // AutomationTable
-    {                                                   // KsPinDescriptor
-      0,                                                // InterfacesCount
-      NULL,                                             // Interfaces
-      0,                                                // MediumsCount
-      NULL,                                             // Mediums
-      SIZEOF_ARRAY(MicInTopoPinDataRangePointersBridge),// DataRangesCount
-      MicInTopoPinDataRangePointersBridge,              // DataRanges
-      KSPIN_DATAFLOW_OUT,                               // DataFlow
-      KSPIN_COMMUNICATION_NONE,                         // Communication
-      &KSCATEGORY_AUDIO,                                // Category
-      NULL,                                             // Name
-      0                                                 // Reserved
-    }
-  }
-};
+static PCPIN_DESCRIPTOR MicInTopoMiniportPins[]  = MICIN_TOPO_MINIPORT_PINS(&CABLE_A_OUTPUT_NAME);
+static PCPIN_DESCRIPTOR MicInBTopoMiniportPins[] = MICIN_TOPO_MINIPORT_PINS(&CABLE_B_OUTPUT_NAME);
+static PCPIN_DESCRIPTOR MicInCTopoMiniportPins[] = MICIN_TOPO_MINIPORT_PINS(&CABLE_C_OUTPUT_NAME);
+static PCPIN_DESCRIPTOR MicInDTopoMiniportPins[] = MICIN_TOPO_MINIPORT_PINS(&CABLE_D_OUTPUT_NAME);
 
 //=============================================================================
 // Only return a KSJACK_DESCRIPTION for the physical bridge pin.
@@ -229,22 +221,26 @@ PCPROPERTY_ITEM MicInPropertiesTopoFilter[] =
 DEFINE_PCAUTOMATION_TABLE_PROP(AutomationMicInTopoFilter, MicInPropertiesTopoFilter);
 
 //=============================================================================
-static
-PCFILTER_DESCRIPTOR MicInTopoMiniportFilterDescriptor =
-{
-  0,                                        // Version
-  &AutomationMicInTopoFilter,               // AutomationTable
-  sizeof(PCPIN_DESCRIPTOR),                 // PinSize
-  SIZEOF_ARRAY(MicInTopoMiniportPins),      // PinCount
-  MicInTopoMiniportPins,                    // Pins
-  sizeof(PCNODE_DESCRIPTOR),                // NodeSize
-  SIZEOF_ARRAY(MicInTopologyNodes),         // NodeCount
-  MicInTopologyNodes,                       // Nodes
-  SIZEOF_ARRAY(MicInMiniportConnections),   // ConnectionCount
-  MicInMiniportConnections,                 // Connections
-  0,                                        // CategoryCount
-  NULL                                      // Categories
-};
+#define MICIN_TOPO_MINIPORT_FILTER_DESCRIPTOR(_Pins)                            \
+{                                                                               \
+  0,                                        /* Version */                       \
+  &AutomationMicInTopoFilter,               /* AutomationTable */               \
+  sizeof(PCPIN_DESCRIPTOR),                 /* PinSize */                       \
+  SIZEOF_ARRAY(_Pins),                      /* PinCount */                      \
+  (_Pins),                                  /* Pins */                          \
+  sizeof(PCNODE_DESCRIPTOR),                /* NodeSize */                      \
+  SIZEOF_ARRAY(MicInTopologyNodes),         /* NodeCount */                     \
+  MicInTopologyNodes,                       /* Nodes */                         \
+  SIZEOF_ARRAY(MicInMiniportConnections),   /* ConnectionCount */               \
+  MicInMiniportConnections,                 /* Connections */                   \
+  0,                                        /* CategoryCount */                 \
+  NULL                                      /* Categories */                    \
+}
+
+static PCFILTER_DESCRIPTOR MicInTopoMiniportFilterDescriptor  = MICIN_TOPO_MINIPORT_FILTER_DESCRIPTOR(MicInTopoMiniportPins);
+static PCFILTER_DESCRIPTOR MicInBTopoMiniportFilterDescriptor = MICIN_TOPO_MINIPORT_FILTER_DESCRIPTOR(MicInBTopoMiniportPins);
+static PCFILTER_DESCRIPTOR MicInCTopoMiniportFilterDescriptor = MICIN_TOPO_MINIPORT_FILTER_DESCRIPTOR(MicInCTopoMiniportPins);
+static PCFILTER_DESCRIPTOR MicInDTopoMiniportFilterDescriptor = MICIN_TOPO_MINIPORT_FILTER_DESCRIPTOR(MicInDTopoMiniportPins);
 
 #endif // _SYSVAD_MICINTOPTABLE_H_
 

@@ -34,21 +34,63 @@ CABLES = "ABCD"
 
 
 # ---------------------------------------------------------------- devices
+_FILTERS = {"Render": {"wavespeaker": "A", "wavespeakerb": "B", "wavespeakerc": "C", "wavespeakerd": "D"},
+            "Capture": {"wavemicin": "A", "wavemicinb": "B", "wavemicinc": "C", "wavemicind": "D"}}
+
+
+def cable_endpoint_ids():
+    """Map 'CABLE-x Input'/'CABLE-x Output' -> MMDevice endpoint GUID via each endpoint's KS wave
+    filter reference, so cables are found even when Windows names them 'Speakers (...)'."""
+    import winreg
+    ids = {}
+    base = r"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio"
+    for flow, filters in _FILTERS.items():
+        try:
+            root = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, f"{base}\\{flow}")
+        except OSError:
+            continue
+        i = 0
+        while True:
+            try:
+                guid = winreg.EnumKey(root, i)
+            except OSError:
+                break
+            i += 1
+            try:
+                with winreg.OpenKey(root, guid + r"\Properties") as p:
+                    ref = winreg.QueryValueEx(p, "{233164c8-1b2c-4c7d-bc68-b671687a2567},1")[0]
+                with winreg.OpenKey(root, guid) as k:
+                    state = winreg.QueryValueEx(k, "DeviceState")[0]
+            except OSError:
+                continue
+            cable = filters.get(str(ref).rsplit("\\", 1)[-1].lower())
+            if cable and state == 1 and "root#media#" in str(ref).lower():
+                ids[f"CABLE-{cable} {'Input' if flow == 'Render' else 'Output'}"] = guid.lower()
+    return ids
+
+
+def _by_cable_id(name, devices):
+    guid = cable_endpoint_ids().get(name)
+    return next((d for d in devices if guid and guid in d.id.lower()), None) if guid else None
+
+
 def find_speaker(name):
-    for s in sc.all_speakers():
+    speakers = sc.all_speakers()
+    for s in speakers:
         if name.lower() in s.name.lower():
             return s
-    return None
+    return _by_cable_id(name, speakers)
 
 
 def find_mic(name):
     loopback = name.lower().startswith("loopback:")
     if loopback:
         name = name.split(":", 1)[1]
-    for m in sc.all_microphones(include_loopback=True):
-        if name.lower() in m.name.lower() and bool(m.isloopback) == loopback:
+    mics = [m for m in sc.all_microphones(include_loopback=True) if bool(m.isloopback) == loopback]
+    for m in mics:
+        if name.lower() in m.name.lower():
             return m
-    return None
+    return _by_cable_id(name, mics)
 
 
 def cable_in(c):
@@ -135,7 +177,7 @@ def play_and_record(speaker, mics, signal, lead=0.5, tail=1.0):
             with m.recorder(samplerate=SR, channels=1, blocksize=480) as r:
                 ready.wait()
                 data = r.record(numframes=total)
-            results[m.name if not m.isloopback else "loopback:" + m.name] = data[:, 0].astype(np.float32)
+            results[m.id + (":loopback" if m.isloopback else "")] = data[:, 0].astype(np.float32)
         except Exception as e:  # noqa: BLE001
             errors.append(f"record {m.name}: {e}")
             try:
@@ -206,8 +248,8 @@ def cmd_passthrough(args):
         rec = play_and_record(spk, list(outs.values()), sig, lead=lead)
         print(f"\n== {spk.name}  (tone {f} Hz)")
         for oc, m in outs.items():
-            key = ("loopback:" if m.isloopback else "") + m.name
-            x = rec[key]
+            x = rec[m.id + (":loopback" if m.isloopback else "")]
+            label = f"CABLE-{oc} Output" if oc != "X" else m.name[:28]
             lat, corr = latency_ms(x, ref, lead)
             # analyze the steady tone section, skipping the latency/startup region
             tone_start = int((lead + 0.5 + max(lat, 0) / 1000 + 0.3) * SR)
@@ -217,10 +259,10 @@ def cmd_passthrough(args):
             expected = (oc == c) or oc == "X"
             if expected:
                 ok = lvl > -12 and corr > 0.5
-                print(f"  {m.name:<28} target: tone {lvl:6.1f} dBFS, chirp corr {corr:.2f}, latency {lat:7.1f} ms  {'PASS' if ok else 'FAIL'}")
+                print(f"  {label:<28} target: tone {lvl:6.1f} dBFS, chirp corr {corr:.2f}, latency {lat:7.1f} ms  {'PASS' if ok else 'FAIL'}")
             else:
                 ok = peak < -70
-                print(f"  {m.name:<28} isolation: peak {peak:6.1f} dBFS  {'PASS' if ok else 'FAIL (leak)'}")
+                print(f"  {label:<28} isolation: peak {peak:6.1f} dBFS  {'PASS' if ok else 'FAIL (leak)'}")
             failed |= not ok
     print("\nRESULT:", "FAIL" if failed else "PASS")
     return 1 if failed else 0
@@ -240,7 +282,7 @@ def cmd_loopback(args):
         lvl = db(level_at(x[int(0.6 * SR): int(1.6 * SR)], 1000))
         ok = lvl > -12
         failed |= not ok
-        print(f"loopback {spk.name:<28} tone {lvl:6.1f} dBFS  {'PASS' if ok else 'FAIL'}")
+        print(f"loopback CABLE-{c} Input  tone {lvl:6.1f} dBFS  {'PASS' if ok else 'FAIL'}")
     return 1 if failed else 0
 
 

@@ -17,8 +17,13 @@ static const ULONGLONG VIRTUAL_CABLE_TARGET_LATENCY_FRAMES = 7168;
 // Without this the backlog is never drained, because readers consume at exactly
 // the writer's rate, so latency would stay at up to the full ring (~680 ms).
 static const ULONGLONG VIRTUAL_CABLE_MAX_BACKLOG_FRAMES = VIRTUAL_CABLE_TARGET_LATENCY_FRAMES + 4800;
-static const ULONG VIRTUAL_CABLE_READER_COUNT = 2;
 static const ULONG VIRTUAL_CABLE_COUNT = 4;
+// Each capture/loopback stream keeps its own read cursor (CMiniportWaveRTStream::
+// m_ullCableReadFrame), so any number of clients can read the same cable without
+// stealing frames from each other. The writer never touches reader state; a reader
+// that falls more than VIRTUAL_CABLE_MAX_BACKLOG_FRAMES behind (always < ring size)
+// resynchronizes before reading, so it never reads overwritten frames.
+C_ASSERT(VIRTUAL_CABLE_MAX_BACKLOG_FRAMES < VIRTUAL_CABLE_FRAME_COUNT);
 
 typedef struct _VIRTUAL_CABLE_FRAME
 {
@@ -29,7 +34,6 @@ typedef struct _VIRTUAL_CABLE_FRAME
 static KSPIN_LOCK g_VirtualCableLock;
 static VIRTUAL_CABLE_FRAME g_VirtualCableFrames[VIRTUAL_CABLE_COUNT][VIRTUAL_CABLE_FRAME_COUNT];
 static ULONGLONG g_VirtualCableWriteFrame[VIRTUAL_CABLE_COUNT];
-static ULONGLONG g_VirtualCableReadFrames[VIRTUAL_CABLE_COUNT][VIRTUAL_CABLE_READER_COUNT];
 static ULONGLONG g_VirtualCableDroppedFrames[VIRTUAL_CABLE_COUNT];
 static ULONGLONG g_VirtualCableUnderflowFrames[VIRTUAL_CABLE_COUNT];
 
@@ -38,7 +42,6 @@ VOID InitializeVirtualCableBuffer()
     KeInitializeSpinLock(&g_VirtualCableLock);
     RtlZeroMemory(g_VirtualCableFrames, sizeof(g_VirtualCableFrames));
     RtlZeroMemory(g_VirtualCableWriteFrame, sizeof(g_VirtualCableWriteFrame));
-    RtlZeroMemory(g_VirtualCableReadFrames, sizeof(g_VirtualCableReadFrames));
     RtlZeroMemory(g_VirtualCableDroppedFrames, sizeof(g_VirtualCableDroppedFrames));
     RtlZeroMemory(g_VirtualCableUnderflowFrames, sizeof(g_VirtualCableUnderflowFrames));
 }
@@ -83,14 +86,6 @@ static VOID StoreVirtualCableFrames
     }
 
     g_VirtualCableWriteFrame[CableIndex] += FrameCount;
-    for (ULONG reader = 0; reader < VIRTUAL_CABLE_READER_COUNT; reader++)
-    {
-        if (g_VirtualCableWriteFrame[CableIndex] - g_VirtualCableReadFrames[CableIndex][reader] > VIRTUAL_CABLE_FRAME_COUNT)
-        {
-            g_VirtualCableReadFrames[CableIndex][reader] = g_VirtualCableWriteFrame[CableIndex] - VIRTUAL_CABLE_FRAME_COUNT;
-            g_VirtualCableDroppedFrames[CableIndex]++;
-        }
-    }
 
     KeReleaseSpinLock(&g_VirtualCableLock, oldIrql);
 }
@@ -101,11 +96,12 @@ static VOID ReadVirtualCableFrames
     _In_ ULONG FrameCount,
     _In_ ULONG Channels,
     _In_ ULONG BytesPerFrame,
-    _In_ ULONG ReaderIndex,
+    _Inout_ ULONGLONG* ReadCursor,
+    _Inout_ BOOLEAN* ReadCursorValid,
     _In_ ULONG CableIndex
 )
 {
-    if (CableIndex >= VIRTUAL_CABLE_COUNT || ReaderIndex >= VIRTUAL_CABLE_READER_COUNT)
+    if (CableIndex >= VIRTUAL_CABLE_COUNT)
     {
         RtlZeroMemory(Destination, FrameCount * BytesPerFrame);
         return;
@@ -115,14 +111,22 @@ static VOID ReadVirtualCableFrames
     KIRQL oldIrql;
     KeAcquireSpinLock(&g_VirtualCableLock, &oldIrql);
 
-    ULONGLONG availableFrames = g_VirtualCableWriteFrame[CableIndex] - g_VirtualCableReadFrames[CableIndex][ReaderIndex];
+    if (!*ReadCursorValid)
+    {
+        // A new (or restarted) stream starts at "now": it never replays stale ring
+        // contents, and fills up to the target latency before returning audio.
+        *ReadCursor = g_VirtualCableWriteFrame[CableIndex];
+        *ReadCursorValid = TRUE;
+    }
+
+    ULONGLONG availableFrames = g_VirtualCableWriteFrame[CableIndex] - *ReadCursor;
     if (availableFrames > VIRTUAL_CABLE_MAX_BACKLOG_FRAMES)
     {
         // Keep exactly one read's worth above the target so this call still returns audio.
         ULONGLONG keepFrames = VIRTUAL_CABLE_TARGET_LATENCY_FRAMES + FrameCount;
         if (keepFrames < availableFrames)
         {
-            g_VirtualCableReadFrames[CableIndex][ReaderIndex] = g_VirtualCableWriteFrame[CableIndex] - keepFrames;
+            *ReadCursor = g_VirtualCableWriteFrame[CableIndex] - keepFrames;
             g_VirtualCableDroppedFrames[CableIndex] += availableFrames - keepFrames;
             availableFrames = keepFrames;
         }
@@ -135,7 +139,7 @@ static VOID ReadVirtualCableFrames
 
     for (ULONG frame = 0; frame < framesToRead; frame++)
     {
-        ULONG ringIndex = (ULONG)(g_VirtualCableReadFrames[CableIndex][ReaderIndex] % VIRTUAL_CABLE_FRAME_COUNT);
+        ULONG ringIndex = (ULONG)(*ReadCursor % VIRTUAL_CABLE_FRAME_COUNT);
         VIRTUAL_CABLE_FRAME sample = g_VirtualCableFrames[CableIndex][ringIndex];
         BYTE* output = Destination + frame * BytesPerFrame;
 
@@ -149,7 +153,7 @@ static VOID ReadVirtualCableFrames
             RtlCopyMemory(output, &sample, sizeof(sample));
         }
 
-        g_VirtualCableReadFrames[CableIndex][ReaderIndex]++;
+        (*ReadCursor)++;
     }
 
     g_VirtualCableUnderflowFrames[CableIndex] += FrameCount - framesToRead;
@@ -390,6 +394,8 @@ Return Value:
     m_pWfExt = NULL;
     m_ullLinearPosition = 0;
     m_ullPresentationPosition = 0;
+    m_ullCableReadFrame = 0;
+    m_bCableReadCursorValid = FALSE;
     m_ulContentId = 0;
     m_ulCurrentWritePosition = 0;
     m_ulLastOsReadPacket = ULONG_MAX;
@@ -1344,6 +1350,7 @@ NTSTATUS CMiniportWaveRTStream::SetState
             m_ullWritePosition = 0;
             m_ullLinearPosition = 0;
             m_ullPresentationPosition = 0;
+            m_bCableReadCursorValid = FALSE;    // restart reads at "now" on the next run
             
             // Reset OS read/write positions
             m_ulLastOsReadPacket = ULONG_MAX;
@@ -1655,7 +1662,6 @@ ByteDisplacement - # of bytes to process.
 
     ULONG bytesPerFrame = m_pWfExt->Format.nBlockAlign;
     ULONG channels = m_pWfExt->Format.nChannels;
-    ULONG readerIndex = m_pMiniport->IsLoopbackPin(m_ulPin) ? 1 : 0;
     ULONG cableIndex = m_pMiniport->GetVirtualCableIndex();
     ULONG bufferOffset = m_ullLinearPosition % m_ulDmaBufferSize;
 
@@ -1673,7 +1679,8 @@ ByteDisplacement - # of bytes to process.
             runWrite / bytesPerFrame,
             channels,
             bytesPerFrame,
-            readerIndex,
+            &m_ullCableReadFrame,
+            &m_bCableReadCursorValid,
             cableIndex);
         bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
         ByteDisplacement -= runWrite;
