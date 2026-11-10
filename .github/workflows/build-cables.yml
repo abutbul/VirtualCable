@@ -65,7 +65,7 @@ jobs:
           }
 
           # Windows 10 (19041+) compatibility: INF must match 19041 and the driver must not import
-          # kernel exports that only exist on Windows 11 (they are inlined when targeting 19041).
+          # kernel exports that only exist on Windows 11 (see the shim in sysvad/common.cpp).
           if ($infText -notmatch 'NTamd64\.10\.0\.\.\.19041') { throw "INF is not decorated for Windows 10 19041 (NTamd64.10.0...19041)." }
           $dumpbin = Get-ChildItem "${env:ProgramFiles}\Microsoft Visual Studio" -Recurse -Filter dumpbin.exe -ErrorAction SilentlyContinue |
             Where-Object { $_.FullName -match 'Hostx64[\\/]x64' } | Select-Object -First 1

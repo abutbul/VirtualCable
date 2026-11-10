@@ -31,8 +31,6 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetVersion>Windows10</TargetVersion>
-    <!-- Windows 10 2004 (19041): keeps lookaside helpers inline; newer WDK defaults import Win11-only exports -->
-    <_NT_TARGET_VERSION>0xA000008</_NT_TARGET_VERSION>
     <UseDebugLibraries>False</UseDebugLibraries>
     <DriverTargetPlatform>Universal</DriverTargetPlatform>
     <DriverType>KMDF</DriverType>
@@ -41,8 +39,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="Configuration">
     <TargetVersion>Windows10</TargetVersion>
-    <!-- Windows 10 2004 (19041): keeps lookaside helpers inline; newer WDK defaults import Win11-only exports -->
-    <_NT_TARGET_VERSION>0xA000008</_NT_TARGET_VERSION>
     <UseDebugLibraries>False</UseDebugLibraries>
     <DriverTargetPlatform>Universal</DriverTargetPlatform>
     <DriverType>KMDF</DriverType>
@@ -51,8 +47,6 @@
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetVersion>Windows10</TargetVersion>
-    <!-- Windows 10 2004 (19041): keeps lookaside helpers inline; newer WDK defaults import Win11-only exports -->
-    <_NT_TARGET_VERSION>0xA000008</_NT_TARGET_VERSION>
     <UseDebugLibraries>True</UseDebugLibraries>
     <DriverTargetPlatform>Universal</DriverTargetPlatform>
     <DriverType>KMDF</DriverType>
@@ -61,8 +55,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="Configuration">
     <TargetVersion>Windows10</TargetVersion>
-    <!-- Windows 10 2004 (19041): keeps lookaside helpers inline; newer WDK defaults import Win11-only exports -->
-    <_NT_TARGET_VERSION>0xA000008</_NT_TARGET_VERSION>
     <UseDebugLibraries>True</UseDebugLibraries>
     <DriverTargetPlatform>Universal</DriverTargetPlatform>
     <DriverType>KMDF</DriverType>

@@ -47,6 +47,29 @@ Abstract:
 #endif // SYSVAD_A2DP_SIDEBAND
 
 //-----------------------------------------------------------------------------
+// Windows 10 compatibility
+//-----------------------------------------------------------------------------
+// When built against current WDK headers, ExAllocateFromNPagedLookasideList and
+// ExFreeToNPagedLookasideList become imports from ntoskrnl, which only Windows 11
+// exports, so the driver fails to load on Windows 10. The lookaside lists below use
+// the default allocator (nonpaged NX pool, fixed size and tag), so plain pool
+// allocations are equivalent; they only serve the Bluetooth/USB sideband paths.
+static __forceinline PVOID SysvadAllocateFromNPagedLookasideList(_Inout_ PNPAGED_LOOKASIDE_LIST Lookaside)
+{
+    return ExAllocatePool2(POOL_FLAG_NON_PAGED, Lookaside->L.Size, Lookaside->L.Tag);
+}
+
+static __forceinline VOID SysvadFreeToNPagedLookasideList(_Inout_ PNPAGED_LOOKASIDE_LIST Lookaside, _In_ PVOID Entry)
+{
+    ExFreePoolWithTag(Entry, Lookaside->L.Tag);
+}
+
+#undef ExAllocateFromNPagedLookasideList
+#undef ExFreeToNPagedLookasideList
+#define ExAllocateFromNPagedLookasideList SysvadAllocateFromNPagedLookasideList
+#define ExFreeToNPagedLookasideList       SysvadFreeToNPagedLookasideList
+
+//-----------------------------------------------------------------------------
 // CSaveData statics
 //-----------------------------------------------------------------------------
 
