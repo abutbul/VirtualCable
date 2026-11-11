@@ -1,16 +1,20 @@
 # Record what the Windows audio service does while a CABLE endpoint is opened.
 #
 # Run from an ELEVATED PowerShell (ETW sessions need admin):
-#   powershell -ExecutionPolicy Bypass -File tools\diag\capture-trace.ps1 [-Cable A] [-Python <python.exe>]
+#   powershell -ExecutionPolicy Bypass -File tools\diag\capture-trace.ps1 [-Cable A] [-NoRearrive] [-Python <python.exe>]
 #
-# Starts an ETW session with the audio stack's diagnostic providers, opens CABLE-<x> Output
-# (capture) and CABLE-<x> Input (render, as a known-good control) in shared and exclusive mode,
-# stops the session, decodes it to XML and prints a summary (tools\diag\summarize_trace.py).
-# Output: %TEMP%\vc_audio_trace\{audio.etl,audio.xml,probe.txt,summary.txt}.
-# Does not restart services or change any setting. See docs\DEBUGGING.md.
+# Starts an ETW session with the audio stack's diagnostic providers, disables and re-enables
+# CABLE-<x> Input/Output so the audio service processes their arrival inside the trace (an
+# endpoint that audiosrv rejects on arrival otherwise only shows ERROR_NOT_FOUND later), opens
+# CABLE-<x> Output (capture) and CABLE-<x> Input (render, as a known-good control) in shared and
+# exclusive mode, stops the session, decodes it to XML and prints a summary
+# (tools\diag\summarize_trace.py). Output: %TEMP%\vc_audio_trace\{audio.etl,audio.xml,probe.txt,summary.txt}.
+# The endpoints end up enabled again; nothing else is changed. -NoRearrive only opens them.
+# See docs\DEBUGGING.md.
 
 param(
     [ValidateSet('A', 'B', 'C', 'D')] [string]$Cable = 'A',
+    [switch]$NoRearrive,
     [string]$Python
 )
 
@@ -52,7 +56,8 @@ logman stop vc_audio -ets 2>$null | Out-Null
 logman start vc_audio -pf "$out\providers.txt" -o "$out\audio.etl" -ets | Out-Null
 try {
     Start-Sleep -Seconds 1
-    & $Python (Join-Path $PSScriptRoot 'wasapi_probe.py') open --cable $Cable 2>&1 |
+    $probeCmd = if ($NoRearrive) { 'open' } else { 'rearrive' }
+    & $Python (Join-Path $PSScriptRoot 'wasapi_probe.py') $probeCmd --cable $Cable 2>&1 |
         Out-File -FilePath "$out\probe.txt" -Encoding ASCII
     Get-Content "$out\probe.txt"
     Start-Sleep -Seconds 1

@@ -6,6 +6,15 @@ Usage (from the repo root; needs `pip install numpy soundcard`):
   python tools/diag/wasapi_probe.py open [--cable A]     GetMixFormat, shared/exclusive IsFormatSupported/Initialize,
                                                          IAudioClient2 categories + RAW, MME waveInOpen/waveOutOpen
   python tools/diag/wasapi_probe.py policy               IPolicyConfig (Sound control panel API) device/mix formats
+  python tools/diag/wasapi_probe.py interfaces [--cable A]
+                                                         Activate IAudioEndpointVolume / IAudioMeterInformation /
+                                                         IDeviceTopology (client-side, talk to the KS topology directly)
+                                                         and IAudioSessionManager2 (answered by audiosrv). Session calls
+                                                         failing with 0x80070490 while the others work = audiosrv does
+                                                         not have the endpoint registered at all (not a format problem)
+  python tools/diag/wasapi_probe.py rearrive [--cable A] disable + re-enable the cable's two endpoints so audiosrv
+                                                         processes their arrival again (capture-trace.ps1 does this
+                                                         inside the trace), then run `open`
   python tools/diag/wasapi_probe.py compare --endpoint {0.0.1.00000000}.{GUID} [--enable-temporarily]
                                                          run `open` against another endpoint (e.g. Realtek Stereo Mix)
                                                          to tell a system-wide capture problem from a driver one
@@ -202,6 +211,82 @@ def cmd_policy(_args):
                 policy_show(pc, label, dev.id)
 
 
+# ----------------------------------------------------------------- endpoint interfaces
+def guid(s):
+    return (ctypes.c_byte * 16).from_buffer_copy(uuid.UUID(s).bytes_le)
+
+
+ACTIVATE_IIDS = {
+    'IAudioEndpointVolume': '5CDF2C82-841E-4546-9722-0CF74078229A',
+    'IAudioMeterInformation': 'C02216F6-8C67-4B5B-9D00-D008E73E0064',
+    'IDeviceTopology': '2A07407E-6497-4A18-9787-32F79BD0D98F',
+    'IAudioSessionManager2': '77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F',
+}
+
+
+def probe_interfaces(dev_id, label):
+    ole32 = ctypes.WinDLL('ole32')
+    ole32.CoInitializeEx(None, 0)
+    enum = ctypes.c_void_p()
+    ole32.CoCreateInstance(ctypes.byref(guid('BCDE0395-E52F-467C-8E3D-C4579291692E')), None, 1,
+                           ctypes.byref(guid('A95664D2-9614-4F35-A746-DE8DB63617E6')), ctypes.byref(enum))
+    dev = ctypes.c_void_p()
+    hr = vcall(enum.value, 5, ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_void_p))(enum.value, dev_id, ctypes.byref(dev))
+    print(f'== {label}  id={dev_id}  GetDevice {hx(hr)}')
+    if hr:
+        return
+    u32, f32, ptr = ctypes.c_uint, ctypes.c_float, ctypes.c_void_p
+    for name, iid in ACTIVATE_IIDS.items():
+        p = ptr()
+        hr = vcall(dev.value, 3, ptr, ctypes.c_uint32, ptr, ctypes.POINTER(ptr))(dev.value, ctypes.byref(guid(iid)), 23, None, ctypes.byref(p))
+        line = f'   Activate {name:<24} {hx(hr)}'
+        if hr == 0 and name == 'IAudioEndpointVolume':
+            n, lv, m, hw = u32(), f32(), ctypes.c_int(), u32()
+            a, b, c = f32(), f32(), f32()
+            h1 = vcall(p.value, 5, ctypes.POINTER(u32))(p.value, ctypes.byref(n))
+            h2 = vcall(p.value, 9, ctypes.POINTER(f32))(p.value, ctypes.byref(lv))
+            h3 = vcall(p.value, 15, ctypes.POINTER(ctypes.c_int))(p.value, ctypes.byref(m))
+            h4 = vcall(p.value, 19, ctypes.POINTER(u32))(p.value, ctypes.byref(hw))
+            h5 = vcall(p.value, 20, *[ctypes.POINTER(f32)] * 3)(p.value, ctypes.byref(a), ctypes.byref(b), ctypes.byref(c))
+            line += (f'  channels {hx(h1)}={n.value} level {hx(h2)}={lv.value:.2f} mute {hx(h3)}={m.value}'
+                     f' hwsupport {hx(h4)}=0x{hw.value:x} range {hx(h5)}=[{a.value:.1f},{b.value:.1f}] step {c.value:.2f} dB')
+        elif hr == 0 and name == 'IAudioMeterInformation':
+            n, hw = u32(), u32()
+            h1 = vcall(p.value, 4, ctypes.POINTER(u32))(p.value, ctypes.byref(n))
+            h2 = vcall(p.value, 6, ctypes.POINTER(u32))(p.value, ctypes.byref(hw))
+            line += f'  channels {hx(h1)}={n.value} hwsupport {hx(h2)}=0x{hw.value:x}'
+        elif hr == 0 and name == 'IDeviceTopology':
+            n = u32()
+            line += f'  connectors {hx(vcall(p.value, 3, ctypes.POINTER(u32))(p.value, ctypes.byref(n)))}={n.value}'
+        elif hr == 0 and name == 'IAudioSessionManager2':
+            out = ptr()
+            h1 = vcall(p.value, 4, ptr, ctypes.c_uint32, ctypes.POINTER(ptr))(p.value, None, 0, ctypes.byref(out))
+            h2 = vcall(p.value, 3, ptr, ctypes.c_uint32, ctypes.POINTER(ptr))(p.value, None, 0, ctypes.byref(out))
+            h3 = vcall(p.value, 5, ctypes.POINTER(ptr))(p.value, ctypes.byref(out))
+            line += f'  GetSimpleAudioVolume {hx(h1)} GetAudioSessionControl {hx(h2)} GetSessionEnumerator {hx(h3)}'
+        print(line)
+
+
+def cmd_interfaces(args):
+    for label, dev in ((t.cable_in(args.cable), t.find_speaker(t.cable_in(args.cable))),
+                       (t.cable_out(args.cable), t.find_mic(t.cable_out(args.cable)))):
+        if dev:
+            probe_interfaces(dev.id, label)
+
+
+def cmd_rearrive(args):
+    pc = policy_config()
+    vis = vcall(pc, 14, ctypes.c_wchar_p, ctypes.c_int)   # IPolicyConfig::SetEndpointVisibility
+    ids = [d.id for d in (t.find_speaker(t.cable_in(args.cable)), t.find_mic(t.cable_out(args.cable))) if d]
+    for i in ids:
+        print(f'disable {i}: {hx(vis(pc, i, 0))}')
+    time.sleep(2)
+    for i in ids:
+        print(f'enable  {i}: {hx(vis(pc, i, 1))}')
+    time.sleep(3)
+    cmd_open(args)
+
+
 def cmd_compare(args):
     pc = policy_config()
     vis = vcall(pc, 14, ctypes.c_wchar_p, ctypes.c_int)   # IPolicyConfig::SetEndpointVisibility
@@ -223,12 +308,13 @@ def cmd_compare(args):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('cmd', choices=['endpoints', 'open', 'policy', 'compare'])
+    ap.add_argument('cmd', choices=['endpoints', 'open', 'policy', 'interfaces', 'rearrive', 'compare'])
     ap.add_argument('--cable', default='A', choices=list('ABCD'))
     ap.add_argument('--endpoint', help='endpoint id for compare, e.g. {0.0.1.00000000}.{c7ac12bc-...}')
     ap.add_argument('--enable-temporarily', action='store_true', help='compare: enable a disabled endpoint, then disable it again')
     args = ap.parse_args()
-    {'endpoints': cmd_endpoints, 'open': cmd_open, 'policy': cmd_policy, 'compare': cmd_compare}[args.cmd](args)
+    {'endpoints': cmd_endpoints, 'open': cmd_open, 'policy': cmd_policy, 'interfaces': cmd_interfaces,
+     'rearrive': cmd_rearrive, 'compare': cmd_compare}[args.cmd](args)
 
 
 if __name__ == '__main__':

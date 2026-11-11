@@ -51,9 +51,11 @@ For FT8 tests install WSJT-X (official GitHub release); it provides `jt9.exe` (d
 | `tools/diag/wasapi_probe.py endpoints` | no | MMDevices registry: endpoint name, form factor, KS filter, stored device and **mix format** |
 | `tools/diag/wasapi_probe.py open` | no | GetMixFormat, shared/exclusive IsFormatSupported/Initialize, stream categories + RAW mode, MME |
 | `tools/diag/wasapi_probe.py policy` | no | Device/mix format as the Sound control panel sees them (IPolicyConfig) |
+| `tools/diag/wasapi_probe.py interfaces [--cable A]` | no | Activates endpoint volume / meter / topology (client side, straight to KS) and the session manager (answered by audiosrv); shows hardware volume support. Session calls failing with `0x80070490` = audiosrv has not registered the endpoint |
+| `tools/diag/wasapi_probe.py rearrive [--cable A]` | no | Disables and re-enables the cable's endpoints (audiosrv re-processes their arrival), then `open` |
 | `tools/diag/wasapi_probe.py compare --endpoint ID [--enable-temporarily]` | no | Same open tests against another endpoint (e.g. Realtek Stereo Mix) to separate driver vs system problems |
 | `tools/diag/exclusive_capture_test.py [play] [rec] [ch]` | no | Exclusive-mode capture with per-call HRESULTs |
-| `tools/diag/capture-trace.ps1 [-Cable A]` | **yes** | ETW trace of the audio service while the endpoints are opened, then `summarize_trace.py` |
+| `tools/diag/capture-trace.ps1 [-Cable A] [-NoRearrive]` | **yes** | ETW trace of the audio service while the endpoints re-arrive (`rearrive`) and are opened, then `summarize_trace.py` |
 | `tools/diag/summarize_trace.py audio.xml [--endpoint GUID]` | no | WIL failures (module, source file:line, HRESULT), the error propagation chain, per-endpoint activity |
 | `tools/diag/check_driver_imports.py TabletAudioSample.sys` | no | Every kernel import exists on this Windows build (catches Code 39 before installing) |
 
@@ -72,8 +74,9 @@ Other sources: `%WINDIR%\inf\setupapi.dev.log` (install), `%TEMP%\VirtualCable-I
    (`name=`), `wasapi_probe.py endpoints` shows what Windows stored (F4).
 4. **No audio** → `cable_e2e_test.py loopback` (driver ring path) vs `passthrough` (capture endpoints).
 5. **An endpoint can't be opened** → `ksprobe.py stream` (driver) vs `wasapi_probe.py open` (service).
-   If only the service fails: `wasapi_probe.py compare` against a system endpoint, then
-   `capture-trace.ps1` and read the WIL failures (F5).
+   If only the service fails: `wasapi_probe.py interfaces` (is the endpoint registered in audiosrv at
+   all?), `wasapi_probe.py compare` against a system endpoint, then `capture-trace.ps1` and read the
+   WIL failures (F5).
 
 ## Findings log
 
@@ -109,8 +112,9 @@ device name `VirtualCable`.
 Result on Windows 10: capture endpoints became `CABLE-x Output (VirtualCable)`, but playback stayed
 `Speakers (VirtualCable)` although `ksprobe.py pins` shows the bridge pin reporting `CABLE-A Input`:
 Windows ignores the pin name for a Speaker-category, integrated (`ePortConnIntegratedDevice`) jack.
-Fix under test: line-out category (`KSNODETYPE_LINE_CONNECTOR`) on a regular jack, like the capture
-side whose names are honoured.
+Fix: line-out category (`KSNODETYPE_LINE_CONNECTOR`) on a regular 3.5 mm jack, like the capture
+side whose names are honoured. Verified with v3 (9.24.39.900): all eight endpoints are named
+`CABLE-x Input/Output (VirtualCable)`, playback form factor LineLevel.
 
 ### F5 — Capture endpoints could not be opened (AUDCLNT_E_UNSUPPORTED_FORMAT)
 Every way of opening `CABLE-x Output` failed: shared `GetMixFormat`/`Initialize`, exclusive mode
@@ -140,9 +144,29 @@ client-side mapping. `wasapi_probe.py endpoints/policy` confirm: device format p
 missing (`0x80070490`), and setting one through IPolicyConfig fails the same way.
 `wasapi_probe.py compare --endpoint <Realtek Stereo Mix> --enable-temporarily` showed that a system
 capture endpoint opens fine, so capture works on the machine. Everything that works here is stereo;
-the failing endpoints were the only mono ones. Fix under test: capture is stereo 16-bit 48 kHz (also
-VB-CABLE's default). Open lead if that is not sufficient: the failure also surfaces in
-`CPerEndpointVolumeAudioSession` (endpoint volume over the topology's mono volume/mute nodes).
+the failing endpoints were the only mono ones. Tried: capture is stereo 16-bit 48 kHz (also
+VB-CABLE's default).
+
+Result of the stereo build (v3, 9.24.39.900): **not the cause.** Capture still fails identically
+(mix format `0x80070490`, exclusive 2ch `IsFormatSupported` S_OK but `Initialize` `0x88890008`).
+Narrowed further with `wasapi_probe.py interfaces`:
+
+```
+                         EndpointVolume  hwsupport  Meter  DeviceTopology  SessionManager2 calls
+CABLE-x Input  (render)  ok              0x0        ok     ok              ok
+CABLE-x Output (capture) ok              0x7        ok     ok              0x80070490 (all three)
+```
+
+The session manager is answered by audiosrv and involves no format, so audiosrv does not have the
+capture endpoints registered at all: their characteristics are rejected when the endpoint *arrives*,
+and every later call (mix format, sessions, Initialize) just reports "not found". Disabling and
+re-enabling the endpoint (`wasapi_probe.py rearrive`, no admin needed) re-runs the arrival and it is
+rejected again, so it is deterministic, not an install-time race. The visible driver difference: the
+playback topology has no nodes (bridge → bridge, software volume), the capture topology has the
+sample's volume → mute → peak-meter chain (hardware volume/mute/meter, `hwsupport=0x7`).
+Next step: `capture-trace.ps1` (now re-arrives the endpoints inside the trace) to get the WIL
+failure at arrival; candidate fix if it points at the topology nodes: give the capture topology the
+same node-less bridge → bridge layout as playback.
 
 ### F6 — Duplicate devnode after a failed install
 A failed `devcon install` still creates `ROOT\MEDIA\0000` without a driver; reinstalling adds
