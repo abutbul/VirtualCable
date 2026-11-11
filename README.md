@@ -7,7 +7,7 @@ This repository contains an early Windows virtual audio driver based on Microsof
 - `CABLE-A Input` through `CABLE-D Input` are the playback endpoints.
 - `CABLE-A Output` through `CABLE-D Output` are the corresponding recording endpoints.
 
-The current driver path supports stereo 48 kHz, 16-bit PCM playback and mono 48 kHz, 16-bit PCM recording. Each cable has an independent nonpaged ring buffer; the matching recording endpoint downmixes stereo to mono. Each render loopback stream reads its cable's ring independently.
+The current driver path supports stereo 48 kHz, 16-bit PCM playback and recording (like VB-CABLE's default format). Each cable has an independent nonpaged ring buffer; every recording or loopback stream keeps its own read position, so several applications can record the same cable.
 
 ## Driver status
 

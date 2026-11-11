@@ -35,7 +35,7 @@ python tools/cable_e2e_test.py ft8 --wav 000000_000001.wav --cable A   # FT8 thr
 
 Keep each `CABLE-x Input` volume at 100% in Windows; the playback volume scales the signal.
 
-The driver currently supports stereo 48 kHz, 16-bit PCM playback and mono 48 kHz, 16-bit PCM recording. Other rates, bit depths, channel counts, persistent latency configuration, and the reference manual's statistics/control panel are not implemented. A successful build alone does not establish that endpoint creation or pass-through works; record the Windows version, endpoint list, and signal/isolation results when testing.
+The driver currently supports stereo 48 kHz, 16-bit PCM playback and recording. Other rates, bit depths, channel counts, persistent latency configuration, and the reference manual's statistics/control panel are not implemented. A successful build alone does not establish that endpoint creation or pass-through works; record the Windows version, endpoint list, and signal/isolation results when testing.
 
 ## Uninstall
 

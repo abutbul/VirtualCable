@@ -2,7 +2,7 @@
 
 Scope reference: `documentation.txt` (VB-CABLE Reference Manual, revision 3, October 2024).
 
-Current baseline: four test-signed endpoint pairs build on Windows. The driver path is fixed at stereo 48 kHz, 16-bit PCM playback to mono 48 kHz, 16-bit PCM capture. Endpoint creation and actual audio transport still require installation and signal verification on a Windows test VM.
+Current baseline: four test-signed endpoint pairs build on Windows. The driver path is fixed at stereo 48 kHz, 16-bit PCM playback and capture. Endpoint creation and actual audio transport still require installation and signal verification on a Windows test VM.
 
 ## P0: Validate the current four-cable release
 

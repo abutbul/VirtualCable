@@ -69,7 +69,7 @@ PKSDATARANGE SpeakerTopoPinDataRangePointersBridge[] =
       SpeakerTopoPinDataRangePointersBridge,                                    \
       KSPIN_DATAFLOW_OUT,                                                       \
       KSPIN_COMMUNICATION_NONE,                                                 \
-      &KSNODETYPE_SPEAKER,                              /* Category */          \
+      &KSNODETYPE_LINE_CONNECTOR,                       /* Category */          \
       (_EndpointName),                                  /* Name */              \
       0                                                                         \
     }                                                                           \
@@ -87,10 +87,10 @@ KSJACK_DESCRIPTION SpeakerJackDescBridge =
 {
     KSAUDIO_SPEAKER_STEREO,
     0xB3C98C,               // Color spec for green
-    eConnTypeUnknown,
-    eGeoLocFront,
+    eConnType3Point5mm,
+    eGeoLocRear,
     eGenLocPrimaryBox,
-    ePortConnIntegratedDevice,
+    ePortConnJack,
     TRUE
 };
 

@@ -472,7 +472,8 @@ Return Value:
     }
     RtlCopyMemory(m_pWfExt, pWfEx, sizeof(WAVEFORMATEX) + pWfEx->cbSize);
 
-    ULONG expectedChannels = Capture_ && !m_pMiniport->IsLoopbackPin(Pin_) ? 1 : 2;
+    // Playback, capture and loopback streams are all stereo 16-bit 48 kHz.
+    ULONG expectedChannels = 2;
     if (m_pWfExt->Format.nSamplesPerSec != 48000 ||
         m_pWfExt->Format.wBitsPerSample != 16 ||
         m_pWfExt->Format.nChannels != expectedChannels ||
