@@ -192,6 +192,11 @@ COMMUNICATIONS clients fall back to DEFAULT). Hardware volume/mute/meter nodes (
 the other suspect and are not involved.
 Lesson: run `ksprobe.py modes` after touching any `*PinSupportedDeviceModes` table; anything newer
 than the oldest supported Windows breaks that endpoint there.
+Verified with v4 (10.52.44.702) on Windows 10 19045: capture mix format present (2ch 48 kHz float),
+shared/exclusive/categories/RAW/MME opens succeed, session manager answers; `cable_e2e_test.py
+passthrough` PASS on A–D (-6.0 dBFS, chirp corr 1.00, isolation -180 dBFS, latency 184–206 ms);
+FT8 (`ft8sim` CQ K1ABC FN42) played into CABLE-A/B Input and recorded from CABLE-A/B Output decodes
+with jt9 at the source SNR (-12 dB), DT 0.2 s.
 
 ### F6 — Duplicate devnode after a failed install
 A failed `devcon install` still creates `ROOT\MEDIA\0000` without a driver; reinstalling adds
