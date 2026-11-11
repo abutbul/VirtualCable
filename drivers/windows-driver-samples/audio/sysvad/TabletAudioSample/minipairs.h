@@ -192,7 +192,7 @@ ENDPOINT_MINIPAIR SpeakerBMiniports =
 {
     eSpeakerDevice,
     L"TopologySpeakerB", NULL,
-    CreateMiniportTopologySYSVAD, &SpeakerTopoMiniportFilterDescriptor,
+    CreateMiniportTopologySYSVAD, &SpeakerBTopoMiniportFilterDescriptor,
     0, NULL,
     L"WaveSpeakerB", NULL,
     CreateMiniportWaveRTSYSVAD, &SpeakerWaveMiniportFilterDescriptor,
@@ -211,7 +211,7 @@ ENDPOINT_MINIPAIR SpeakerCMiniports =
 {
     eSpeakerDevice,
     L"TopologySpeakerC", NULL,
-    CreateMiniportTopologySYSVAD, &SpeakerTopoMiniportFilterDescriptor,
+    CreateMiniportTopologySYSVAD, &SpeakerCTopoMiniportFilterDescriptor,
     0, NULL,
     L"WaveSpeakerC", NULL,
     CreateMiniportWaveRTSYSVAD, &SpeakerWaveMiniportFilterDescriptor,
@@ -230,7 +230,7 @@ ENDPOINT_MINIPAIR SpeakerDMiniports =
 {
     eSpeakerDevice,
     L"TopologySpeakerD", NULL,
-    CreateMiniportTopologySYSVAD, &SpeakerTopoMiniportFilterDescriptor,
+    CreateMiniportTopologySYSVAD, &SpeakerDTopoMiniportFilterDescriptor,
     0, NULL,
     L"WaveSpeakerD", NULL,
     CreateMiniportWaveRTSYSVAD, &SpeakerWaveMiniportFilterDescriptor,
@@ -435,7 +435,7 @@ ENDPOINT_MINIPAIR MicBMiniports =
 {
     eMicInDevice,
     L"TopologyMicInB", NULL,
-    CreateMiniportTopologySYSVAD, &MicInTopoMiniportFilterDescriptor,
+    CreateMiniportTopologySYSVAD, &MicInBTopoMiniportFilterDescriptor,
     0, NULL,
     L"WaveMicInB", NULL,
     CreateMiniportWaveRTSYSVAD, &MicInWaveMiniportFilterDescriptor,
@@ -453,7 +453,7 @@ ENDPOINT_MINIPAIR MicCMiniports =
 {
     eMicInDevice,
     L"TopologyMicInC", NULL,
-    CreateMiniportTopologySYSVAD, &MicInTopoMiniportFilterDescriptor,
+    CreateMiniportTopologySYSVAD, &MicInCTopoMiniportFilterDescriptor,
     0, NULL,
     L"WaveMicInC", NULL,
     CreateMiniportWaveRTSYSVAD, &MicInWaveMiniportFilterDescriptor,
@@ -471,7 +471,7 @@ ENDPOINT_MINIPAIR MicDMiniports =
 {
     eMicInDevice,
     L"TopologyMicInD", NULL,
-    CreateMiniportTopologySYSVAD, &MicInTopoMiniportFilterDescriptor,
+    CreateMiniportTopologySYSVAD, &MicInDTopoMiniportFilterDescriptor,
     0, NULL,
     L"WaveMicInD", NULL,
     CreateMiniportWaveRTSYSVAD, &MicInWaveMiniportFilterDescriptor,

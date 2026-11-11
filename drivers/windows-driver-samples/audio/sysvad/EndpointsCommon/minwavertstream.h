@@ -103,6 +103,8 @@ protected:
     ULONGLONG                   m_ullWritePosition;
     ULONGLONG                   m_ullLinearPosition;
     ULONGLONG                   m_ullPresentationPosition;
+    ULONGLONG                   m_ullCableReadFrame;        // this stream's read cursor into its cable's ring
+    BOOLEAN                     m_bCableReadCursorValid;    // FALSE: start reading at the ring's current write position
     ULONG                       m_ulLastOsReadPacket;
     ULONG                       m_ulLastOsWritePacket;
     LONGLONG                    m_llPacketCounter;

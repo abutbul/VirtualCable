@@ -15,6 +15,8 @@ Abstract:
 #ifndef _SYSVAD_SPEAKERTOPTABLE_H_
 #define _SYSVAD_SPEAKERTOPTABLE_H_
 
+#include "cablenames.h"
+
 //=============================================================================
 static
 KSDATARANGE SpeakerTopoPinDataRangesBridge[] =
@@ -38,50 +40,46 @@ PKSDATARANGE SpeakerTopoPinDataRangePointersBridge[] =
 };
 
 //=============================================================================
-static
-PCPIN_DESCRIPTOR SpeakerTopoMiniportPins[] =
-{
-  // KSPIN_TOPO_WAVEOUT_SOURCE
-  {
-    0,
-    0,
-    0,                                                  // InstanceCount
-    NULL,                                               // AutomationTable
-    {                                                   // KsPinDescriptor
-      0,                                                // InterfacesCount
-      NULL,                                             // Interfaces
-      0,                                                // MediumsCount
-      NULL,                                             // Mediums
-      SIZEOF_ARRAY(SpeakerTopoPinDataRangePointersBridge),// DataRangesCount
-      SpeakerTopoPinDataRangePointersBridge,            // DataRanges
-      KSPIN_DATAFLOW_IN,                                // DataFlow
-      KSPIN_COMMUNICATION_NONE,                         // Communication
-      &KSCATEGORY_AUDIO,                                // Category
-      NULL,                                             // Name
-      0                                                 // Reserved
-    }
-  },
-  // KSPIN_TOPO_LINEOUT_DEST
-  {
-    0,
-    0,
-    0,                                                  // InstanceCount
-    NULL,                                               // AutomationTable
-    {                                                   // KsPinDescriptor
-      0,                                                // InterfacesCount
-      NULL,                                             // Interfaces
-      0,                                                // MediumsCount
-      NULL,                                             // Mediums
-      SIZEOF_ARRAY(SpeakerTopoPinDataRangePointersBridge),// DataRangesCount
-      SpeakerTopoPinDataRangePointersBridge,            // DataRanges
-      KSPIN_DATAFLOW_OUT,                               // DataFlow
-      KSPIN_COMMUNICATION_NONE,                         // Communication
-      &KSNODETYPE_SPEAKER,                              // Category
-      NULL,                                             // Name
-      0                                                 // Reserved
-    }
-  }
-};
+// One pin table per cable: identical except for the bridge pin's Name GUID, which
+// Windows uses (via the INF's MediaCategories entries) as the endpoint name.
+#define SPEAKER_TOPO_MINIPORT_PINS(_EndpointName)                               \
+{                                                                               \
+  /* KSPIN_TOPO_WAVEOUT_SOURCE */                                               \
+  {                                                                             \
+    0, 0, 0,                                            /* InstanceCount */     \
+    NULL,                                               /* AutomationTable */   \
+    {                                                                           \
+      0, NULL, 0, NULL,                                 /* Interfaces/Mediums */\
+      SIZEOF_ARRAY(SpeakerTopoPinDataRangePointersBridge),                      \
+      SpeakerTopoPinDataRangePointersBridge,                                    \
+      KSPIN_DATAFLOW_IN,                                                        \
+      KSPIN_COMMUNICATION_NONE,                                                 \
+      &KSCATEGORY_AUDIO,                                /* Category */          \
+      NULL,                                             /* Name */              \
+      0                                                                         \
+    }                                                                           \
+  },                                                                            \
+  /* KSPIN_TOPO_LINEOUT_DEST (bridge pin: names the endpoint) */                \
+  {                                                                             \
+    0, 0, 0,                                            /* InstanceCount */     \
+    NULL,                                               /* AutomationTable */   \
+    {                                                                           \
+      0, NULL, 0, NULL,                                 /* Interfaces/Mediums */\
+      SIZEOF_ARRAY(SpeakerTopoPinDataRangePointersBridge),                      \
+      SpeakerTopoPinDataRangePointersBridge,                                    \
+      KSPIN_DATAFLOW_OUT,                                                       \
+      KSPIN_COMMUNICATION_NONE,                                                 \
+      &KSNODETYPE_LINE_CONNECTOR,                       /* Category */          \
+      (_EndpointName),                                  /* Name */              \
+      0                                                                         \
+    }                                                                           \
+  }                                                                             \
+}
+
+static PCPIN_DESCRIPTOR SpeakerTopoMiniportPins[]  = SPEAKER_TOPO_MINIPORT_PINS(&CABLE_A_INPUT_NAME);
+static PCPIN_DESCRIPTOR SpeakerBTopoMiniportPins[] = SPEAKER_TOPO_MINIPORT_PINS(&CABLE_B_INPUT_NAME);
+static PCPIN_DESCRIPTOR SpeakerCTopoMiniportPins[] = SPEAKER_TOPO_MINIPORT_PINS(&CABLE_C_INPUT_NAME);
+static PCPIN_DESCRIPTOR SpeakerDTopoMiniportPins[] = SPEAKER_TOPO_MINIPORT_PINS(&CABLE_D_INPUT_NAME);
 
 //=============================================================================
 static
@@ -89,10 +87,10 @@ KSJACK_DESCRIPTION SpeakerJackDescBridge =
 {
     KSAUDIO_SPEAKER_STEREO,
     0xB3C98C,               // Color spec for green
-    eConnTypeUnknown,
-    eGeoLocFront,
+    eConnType3Point5mm,
+    eGeoLocRear,
     eGenLocPrimaryBox,
-    ePortConnIntegratedDevice,
+    ePortConnJack,
     TRUE
 };
 
@@ -166,22 +164,26 @@ PCPROPERTY_ITEM PropertiesSpeakerTopoFilter[] =
 DEFINE_PCAUTOMATION_TABLE_PROP(AutomationSpeakerTopoFilter, PropertiesSpeakerTopoFilter);
 
 //=============================================================================
-static
-PCFILTER_DESCRIPTOR SpeakerTopoMiniportFilterDescriptor =
-{
-  0,                                            // Version
-  &AutomationSpeakerTopoFilter,                 // AutomationTable
-  sizeof(PCPIN_DESCRIPTOR),                     // PinSize
-  SIZEOF_ARRAY(SpeakerTopoMiniportPins),        // PinCount
-  SpeakerTopoMiniportPins,                      // Pins
-  sizeof(PCNODE_DESCRIPTOR),                    // NodeSize
-  0,                                            // NodeCount
-  NULL,                                         // Nodes
-  SIZEOF_ARRAY(SpeakerTopoMiniportConnections), // ConnectionCount
-  SpeakerTopoMiniportConnections,               // Connections
-  0,                                            // CategoryCount
-  NULL                                          // Categories
-};
+#define SPEAKER_TOPO_MINIPORT_FILTER_DESCRIPTOR(_Pins)                          \
+{                                                                               \
+  0,                                            /* Version */                   \
+  &AutomationSpeakerTopoFilter,                 /* AutomationTable */           \
+  sizeof(PCPIN_DESCRIPTOR),                     /* PinSize */                   \
+  SIZEOF_ARRAY(_Pins),                          /* PinCount */                  \
+  (_Pins),                                      /* Pins */                      \
+  sizeof(PCNODE_DESCRIPTOR),                    /* NodeSize */                  \
+  0,                                            /* NodeCount */                 \
+  NULL,                                         /* Nodes */                     \
+  SIZEOF_ARRAY(SpeakerTopoMiniportConnections), /* ConnectionCount */           \
+  SpeakerTopoMiniportConnections,               /* Connections */               \
+  0,                                            /* CategoryCount */             \
+  NULL                                          /* Categories */                \
+}
+
+static PCFILTER_DESCRIPTOR SpeakerTopoMiniportFilterDescriptor  = SPEAKER_TOPO_MINIPORT_FILTER_DESCRIPTOR(SpeakerTopoMiniportPins);
+static PCFILTER_DESCRIPTOR SpeakerBTopoMiniportFilterDescriptor = SPEAKER_TOPO_MINIPORT_FILTER_DESCRIPTOR(SpeakerBTopoMiniportPins);
+static PCFILTER_DESCRIPTOR SpeakerCTopoMiniportFilterDescriptor = SPEAKER_TOPO_MINIPORT_FILTER_DESCRIPTOR(SpeakerCTopoMiniportPins);
+static PCFILTER_DESCRIPTOR SpeakerDTopoMiniportFilterDescriptor = SPEAKER_TOPO_MINIPORT_FILTER_DESCRIPTOR(SpeakerDTopoMiniportPins);
 
 #endif // _SYSVAD_SPEAKERTOPTABLE_H_
 

@@ -64,6 +64,18 @@ jobs:
             if (-not $infText.Contains($endpointName)) { throw "Generated INF is missing endpoint $endpointName." }
           }
 
+          # Windows 10 (19041+) compatibility: INF must match 19041 and the driver must not import
+          # kernel exports that only exist on Windows 11 (see the shim in sysvad/common.cpp).
+          if ($infText -notmatch 'NTamd64\.10\.0\.\.\.19041') { throw "INF is not decorated for Windows 10 19041 (NTamd64.10.0...19041)." }
+          $dumpbin = Get-ChildItem "${env:ProgramFiles}\Microsoft Visual Studio" -Recurse -Filter dumpbin.exe -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match 'Hostx64[\\/]x64' } | Select-Object -First 1
+          if (-not $dumpbin) { throw "dumpbin.exe was not found." }
+          $imports = & $dumpbin.FullName /imports (Join-Path $packageDir "TabletAudioSample.sys") | Out-String
+          foreach ($win11Only in @("ExAllocateFromNPagedLookasideList", "ExFreeToNPagedLookasideList",
+                                   "ExAllocateFromPagedLookasideList", "ExFreeToPagedLookasideList")) {
+            if ($imports -match "\b$win11Only\b") { throw "TabletAudioSample.sys imports $win11Only, which Windows 10 does not export." }
+          }
+
           $stageDir = Join-Path $env:GITHUB_WORKSPACE "artifacts/VirtualCable-Driver-TestSigned-win-x64"
           New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
           Get-ChildItem $packageDir -Force | Copy-Item -Destination $stageDir -Recurse -Force

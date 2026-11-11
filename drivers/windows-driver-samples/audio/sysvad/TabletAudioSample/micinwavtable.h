@@ -18,7 +18,9 @@ Abstract:
 //
 // Mic in (external: headphone) range.
 //
-#define MICIN_DEVICE_MAX_CHANNELS           1       // Max Channels.
+#define MICIN_DEVICE_MAX_CHANNELS           2       // Max Channels. Stereo: Windows 10's audio service
+                                                    // fails to build a mix format for this capture endpoint
+                                                    // when it is mono (ERROR_NOT_FOUND / AUDCLNT_E_UNSUPPORTED_FORMAT).
 #define MICIN_MIN_BITS_PER_SAMPLE_PCM       16      // Min Bits Per Sample
 #define MICIN_MAX_BITS_PER_SAMPLE_PCM       16      // Max Bits Per Sample
 #define MICIN_MIN_SAMPLE_RATE               48000   // Min Sample Rate
@@ -27,7 +29,8 @@ Abstract:
 //
 // Max # of pin instances.
 //
-#define MICIN_MAX_INPUT_STREAMS             1
+#define MICIN_MAX_INPUT_STREAMS             5       // one per advertised processing mode (as upstream);
+                                                    // with 1, the audio engine cannot open the capture endpoint
 
 //=============================================================================
 static 
@@ -46,15 +49,15 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicInPinSupportedDeviceFormats[] =
         {
             {
                 WAVE_FORMAT_EXTENSIBLE,
-                1,
-                48000,
-                96000,
                 2,
+                48000,
+                192000,
+                4,
                 16,
                 sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
             },
             16,
-            KSAUDIO_SPEAKER_MONO,
+            KSAUDIO_SPEAKER_STEREO,
             STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
         }
     },
@@ -71,15 +74,15 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicInPinSupportedDeviceFormats[] =
         {
             {
                 WAVE_FORMAT_EXTENSIBLE,
-                1,
-                48000,
-                96000,
                 2,
+                48000,
+                192000,
+                4,
                 16,
                 sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
             },
             16,
-            KSAUDIO_SPEAKER_MONO,
+            KSAUDIO_SPEAKER_STEREO,
             STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
         }
     },
@@ -96,15 +99,15 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicInPinSupportedDeviceFormats[] =
         {
             {
                 WAVE_FORMAT_EXTENSIBLE,
-                1,
-                48000,
-                96000,
                 2,
+                48000,
+                192000,
+                4,
                 16,
                 sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
             },
             16,
-            KSAUDIO_SPEAKER_MONO,
+            KSAUDIO_SPEAKER_STEREO,
             STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
         }
     },
@@ -121,15 +124,15 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicInPinSupportedDeviceFormats[] =
         {
             {
                 WAVE_FORMAT_EXTENSIBLE,
-                1,
-                48000,
-                96000,
                 2,
+                48000,
+                192000,
+                4,
                 16,
                 sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
             },
             16,
-            KSAUDIO_SPEAKER_MONO,
+            KSAUDIO_SPEAKER_STEREO,
             STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
         }
     },
@@ -146,15 +149,15 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicInPinSupportedDeviceFormats[] =
         {
             {
                 WAVE_FORMAT_EXTENSIBLE,
-                1,
-                48000,
-                96000,
                 2,
+                48000,
+                192000,
+                4,
                 16,
                 sizeof(WAVEFORMATEXTENSIBLE)-sizeof(WAVEFORMATEX)
             },
             16,
-            KSAUDIO_SPEAKER_MONO,
+            KSAUDIO_SPEAKER_STEREO,
             STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
         }
     },
@@ -171,15 +174,15 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicInPinSupportedDeviceFormats[] =
         {
             {
                 WAVE_FORMAT_EXTENSIBLE,
-                1,
-                48000,
-                96000,
                 2,
+                48000,
+                192000,
+                4,
                 16,
                 sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
             },
             16,
-            KSAUDIO_SPEAKER_MONO,
+            KSAUDIO_SPEAKER_STEREO,
             STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
         }
     },
@@ -196,15 +199,15 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicInPinSupportedDeviceFormats[] =
         {
             {
                 WAVE_FORMAT_EXTENSIBLE,
-                1,
-                48000,
-                96000,
                 2,
+                48000,
+                192000,
+                4,
                 16,
                 sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
             },
             16,
-            KSAUDIO_SPEAKER_MONO,
+            KSAUDIO_SPEAKER_STEREO,
             STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
         }
     },
@@ -221,15 +224,15 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicInPinSupportedDeviceFormats[] =
         {
             {
                 WAVE_FORMAT_EXTENSIBLE,
-                1,
-                48000,
-                96000,
                 2,
+                48000,
+                192000,
+                4,
                 16,
                 sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
             },
             16,
-            KSAUDIO_SPEAKER_MONO,
+            KSAUDIO_SPEAKER_STEREO,
             STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
         }
     }
@@ -237,6 +240,13 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicInPinSupportedDeviceFormats[] =
 
 //
 // Supported modes (only on streaming pins).
+//
+// A cable output is a pass-through, so it only advertises RAW and DEFAULT (both 48 kHz stereo);
+// clients that ask for SPEECH/COMMUNICATIONS fall back to DEFAULT. Do NOT add
+// AUDIO_SIGNALPROCESSINGMODE_FAR_FIELD_SPEECH (the upstream sample has it): it is newer than
+// Windows 10 (19041-19045), whose audiosrv cannot resolve it and then fails the endpoint's mix format
+// with ERROR_NOT_FOUND, i.e. every capture open fails with AUDCLNT_E_UNSUPPORTED_FORMAT.
+// See docs/DEBUGGING.md, F5.
 //
 static
 MODE_AND_DEFAULT_FORMAT MicInPinSupportedDeviceModes[] =
@@ -248,18 +258,6 @@ MODE_AND_DEFAULT_FORMAT MicInPinSupportedDeviceModes[] =
     {
         STATIC_AUDIO_SIGNALPROCESSINGMODE_DEFAULT,
         &MicInPinSupportedDeviceFormats[SIZEOF_ARRAY(MicInPinSupportedDeviceFormats) - 1].DataFormat,
-    },
-    {
-        STATIC_AUDIO_SIGNALPROCESSINGMODE_SPEECH,
-        &MicInPinSupportedDeviceFormats[2].DataFormat, // 16KHz
-    },
-    {
-        STATIC_AUDIO_SIGNALPROCESSINGMODE_COMMUNICATIONS,
-        &MicInPinSupportedDeviceFormats[4].DataFormat, // 24KHz
-    },
-    {
-        STATIC_AUDIO_SIGNALPROCESSINGMODE_FAR_FIELD_SPEECH,
-        &MicInPinSupportedDeviceFormats[2].DataFormat, // 16KHz
     },
 };
 
