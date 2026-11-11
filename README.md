@@ -30,3 +30,5 @@ Build the kernel driver on Windows with Visual Studio and the Windows Driver Kit
 GitHub Actions publishes one ZIP, `VirtualCable-Driver-TestSigned-win-x64.zip`, containing the driver files and `VirtualCableManager.exe` for endpoint status, install, and uninstall. It is test-signed for a dedicated test machine, not production-signed for general distribution. Tagged test releases are prereleases. See [drivers/README.md](drivers/README.md) for installation, signal, and cable-isolation checks.
 
 See [drivers/TASKLIST.md](drivers/TASKLIST.md) for remaining implementation and validation work from the reference manual.
+
+See [docs/DEBUGGING.md](docs/DEBUGGING.md) for the debugging workflow, the diagnostic tools in `tools/diag/` (KS-level probes, WASAPI probes, audio-service ETW tracing) and the log of issues found while bringing the driver up on Windows 10.

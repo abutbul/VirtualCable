@@ -46,3 +46,6 @@ documentation.txt
 
 # local Python test env for tools/cable_e2e_test.py
 .venv-test/
+
+# Python bytecode
+__pycache__/
