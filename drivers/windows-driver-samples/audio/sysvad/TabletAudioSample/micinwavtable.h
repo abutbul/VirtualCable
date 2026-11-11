@@ -241,6 +241,13 @@ KSDATAFORMAT_WAVEFORMATEXTENSIBLE MicInPinSupportedDeviceFormats[] =
 //
 // Supported modes (only on streaming pins).
 //
+// A cable output is a pass-through, so it only advertises RAW and DEFAULT (both 48 kHz stereo);
+// clients that ask for SPEECH/COMMUNICATIONS fall back to DEFAULT. Do NOT add
+// AUDIO_SIGNALPROCESSINGMODE_FAR_FIELD_SPEECH (the upstream sample has it): it is newer than
+// Windows 10 (19041-19045), whose audiosrv cannot resolve it and then fails the endpoint's mix format
+// with ERROR_NOT_FOUND, i.e. every capture open fails with AUDCLNT_E_UNSUPPORTED_FORMAT.
+// See docs/DEBUGGING.md, F5.
+//
 static
 MODE_AND_DEFAULT_FORMAT MicInPinSupportedDeviceModes[] =
 {
@@ -251,18 +258,6 @@ MODE_AND_DEFAULT_FORMAT MicInPinSupportedDeviceModes[] =
     {
         STATIC_AUDIO_SIGNALPROCESSINGMODE_DEFAULT,
         &MicInPinSupportedDeviceFormats[SIZEOF_ARRAY(MicInPinSupportedDeviceFormats) - 1].DataFormat,
-    },
-    {
-        STATIC_AUDIO_SIGNALPROCESSINGMODE_SPEECH,
-        &MicInPinSupportedDeviceFormats[2].DataFormat, // 16KHz
-    },
-    {
-        STATIC_AUDIO_SIGNALPROCESSINGMODE_COMMUNICATIONS,
-        &MicInPinSupportedDeviceFormats[4].DataFormat, // 24KHz
-    },
-    {
-        STATIC_AUDIO_SIGNALPROCESSINGMODE_FAR_FIELD_SPEECH,
-        &MicInPinSupportedDeviceFormats[2].DataFormat, // 16KHz
     },
 };
 

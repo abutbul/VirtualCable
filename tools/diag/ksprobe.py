@@ -3,6 +3,8 @@
 Usage (from the repo root, any user, driver installed):
   python tools/diag/ksprobe.py pins    [--cable A]   pin layout, names, categories, instances, physical connections
   python tools/diag/ksprobe.py formats [--cable A]   PROPOSEDATAFORMAT, DATAINTERSECTION, data ranges, per-mode defaults
+  python tools/diag/ksprobe.py modes   [--cable A]   signal-processing modes of each streaming pin, flagging modes this
+                                                     Windows' audio service does not know (breaks the endpoint, F5)
   python tools/diag/ksprobe.py topo    [--cable A]   topology nodes, connections, jack descriptions, volume/mute
   python tools/diag/ksprobe.py stream  [--cable A]   create pin -> WaveRT buffer -> notification -> RUN, like audiodg does
   python tools/diag/ksprobe.py all     [--cable A]
@@ -93,6 +95,25 @@ def cmd_formats(prefix, cable):
                 print(f'   default format for mode {mode:<15}: ' + (ks.describe_format(r) if r else f'err {e}'))
 
 
+def cmd_modes(prefix, cable):
+    """A mode GUID that audiosrv.dll does not contain cannot be resolved by the audio service: on
+    Windows 10 an advertised AUDIO_SIGNALPROCESSINGMODE_FAR_FIELD_SPEECH made GetMixFormat fail with
+    ERROR_NOT_FOUND and every open of the endpoint fail with AUDCLNT_E_UNSUPPORTED_FORMAT."""
+    audiosrv = open(os.path.join(os.environ.get('SystemRoot', r'C:\Windows'), 'System32', 'audiosrv.dll'), 'rb').read()
+    names = {ks.guid(v): k for k, v in ks.MODES.items()}
+    bad = 0
+    for name in ks.WAVE_FILTERS[cable]:
+        with ks.Filter(name, prefix) as f:
+            pin = stream_pin(f)
+            r, e = f.ioctl(ks.KSPROPSETID_AudioSignalProcessing + struct.pack('<IIII', 0, ks.GET, pin, 0), 1024)
+            print(f'== {name} streaming pin {pin}: ' + ('' if r else f'err {e}'))
+            for g in (ks.multiple_item_guids(r) if r else []):
+                known = bytes(g) in audiosrv
+                bad += not known
+                print(f'   {names.get(bytes(g), ks.name_of(g)):<18} {"known to this Windows" if known else "UNKNOWN to this Windows audiosrv -> remove it"}')
+    return 1 if bad else 0
+
+
 def cmd_topo(prefix, cable):
     for name, label in filters_for(cable):
         if not name.startswith('topology'):
@@ -153,12 +174,12 @@ def cmd_stream(prefix, cable):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('cmd', choices=['pins', 'formats', 'topo', 'stream', 'all'])
+    ap.add_argument('cmd', choices=['pins', 'formats', 'modes', 'topo', 'stream', 'all'])
     ap.add_argument('--cable', default='A', choices=list('ABCD'))
     args = ap.parse_args()
     prefix = ks.driver_filter_prefix()
     print(f'driver filters: {prefix}*')
-    cmds = {'pins': cmd_pins, 'formats': cmd_formats, 'topo': cmd_topo, 'stream': cmd_stream}
+    cmds = {'pins': cmd_pins, 'formats': cmd_formats, 'modes': cmd_modes, 'topo': cmd_topo, 'stream': cmd_stream}
     for name in (cmds if args.cmd == 'all' else [args.cmd]):
         cmds[name](prefix, args.cable)
 

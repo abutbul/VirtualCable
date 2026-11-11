@@ -47,7 +47,7 @@ For FT8 tests install WSJT-X (official GitHub release); it provides `jt9.exe` (d
 | `tools/cable_e2e_test.py passthrough` | no | Signal, isolation between cables, latency, through the recording endpoints |
 | `tools/cable_e2e_test.py loopback` | no | Same ring buffer via WASAPI loopback of `CABLE-x Input`; works even when capture endpoints don't |
 | `tools/cable_e2e_test.py ft8 --wav F [--rec "loopback:CABLE-A Input"]` | no | FT8 through the cable, decoded by `jt9` |
-| `tools/diag/ksprobe.py pins\|formats\|topo\|stream\|all` | no | Driver-level truth: pin layout/names/instances, format acceptance, data intersection, per-mode default formats, topology nodes/jacks, a full WaveRT stream start like audiodg does |
+| `tools/diag/ksprobe.py pins\|formats\|modes\|topo\|stream\|all` | no | Driver-level truth: pin layout/names/instances, format acceptance, data intersection, per-mode default formats, topology nodes/jacks, a full WaveRT stream start like audiodg does |
 | `tools/diag/wasapi_probe.py endpoints` | no | MMDevices registry: endpoint name, form factor, KS filter, stored device and **mix format** |
 | `tools/diag/wasapi_probe.py open` | no | GetMixFormat, shared/exclusive IsFormatSupported/Initialize, stream categories + RAW mode, MME |
 | `tools/diag/wasapi_probe.py policy` | no | Device/mix format as the Sound control panel sees them (IPolicyConfig) |
@@ -74,7 +74,8 @@ Other sources: `%WINDIR%\inf\setupapi.dev.log` (install), `%TEMP%\VirtualCable-I
    (`name=`), `wasapi_probe.py endpoints` shows what Windows stored (F4).
 4. **No audio** → `cable_e2e_test.py loopback` (driver ring path) vs `passthrough` (capture endpoints).
 5. **An endpoint can't be opened** → `ksprobe.py stream` (driver) vs `wasapi_probe.py open` (service).
-   If only the service fails: `wasapi_probe.py interfaces` (is the endpoint registered in audiosrv at
+   If only the service fails: `ksprobe.py modes` first (a processing mode this Windows doesn't know
+   breaks the whole endpoint), `wasapi_probe.py interfaces` (does audiosrv answer for the endpoint at
    all?), `wasapi_probe.py compare` against a system endpoint, then `capture-trace.ps1` and read the
    WIL failures (F5).
 
@@ -115,6 +116,10 @@ Windows ignores the pin name for a Speaker-category, integrated (`ePortConnInteg
 Fix: line-out category (`KSNODETYPE_LINE_CONNECTOR`) on a regular 3.5 mm jack, like the capture
 side whose names are honoured. Verified with v3 (9.24.39.900): all eight endpoints are named
 `CABLE-x Input/Output (VirtualCable)`, playback form factor LineLevel.
+Naming is VB-CABLE's convention (reference manual): **CABLE Input is the playback device** (apps
+play *into* the cable) and **CABLE Output is the recording device** (apps record what comes *out*).
+So in the Sound panel the Playback tab lists `CABLE-x Input` and the Recording tab `CABLE-x Output`;
+the wrc-proxy instructions use the same names.
 
 ### F5 — Capture endpoints could not be opened (AUDCLNT_E_UNSUPPORTED_FORMAT)
 Every way of opening `CABLE-x Output` failed: shared `GetMixFormat`/`Initialize`, exclusive mode
@@ -157,16 +162,36 @@ CABLE-x Input  (render)  ok              0x0        ok     ok              ok
 CABLE-x Output (capture) ok              0x7        ok     ok              0x80070490 (all three)
 ```
 
-The session manager is answered by audiosrv and involves no format, so audiosrv does not have the
-capture endpoints registered at all: their characteristics are rejected when the endpoint *arrives*,
-and every later call (mix format, sessions, Initialize) just reports "not found". Disabling and
-re-enabling the endpoint (`wasapi_probe.py rearrive`, no admin needed) re-runs the arrival and it is
-rejected again, so it is deterministic, not an install-time race. The visible driver difference: the
-playback topology has no nodes (bridge → bridge, software volume), the capture topology has the
-sample's volume → mute → peak-meter chain (hardware volume/mute/meter, `hwsupport=0x7`).
-Next step: `capture-trace.ps1` (now re-arrives the endpoints inside the trace) to get the WIL
-failure at arrival; candidate fix if it points at the topology nodes: give the capture topology the
-same node-less bridge → bridge layout as playback.
+The session manager is answered by audiosrv and involves no format, so the failure is inside
+audiosrv's per-endpoint state, not in format negotiation. Disabling and re-enabling the endpoint
+(`wasapi_probe.py rearrive`, no admin needed) reproduces it every time (deterministic, not an
+install-time race).
+
+`capture-trace.ps1` with re-arrival showed the arrival itself succeeds
+(`EndpointCharacteristics Discovery ... hr=0x0`, evaluating the SPEECH and COMMUNICATIONS modes with
+`IsMicArray=true`); the failure is when the mix format is resolved per processing mode
+(`GetSpatialFormatForAudioFormatMustKeepDisabled` → `endpointcharacteristics.cpp:8095…6852`
+`ERROR_NOT_FOUND`). A KS property sweep showed the capture and render pins answer the same
+properties the same way; the difference is in the **mode list**:
+
+```
+ksprobe.py modes
+== wavespeaker streaming pin 0: RAW DEFAULT MEDIA MOVIE COMMUNICATIONS NOTIFICATION  (all known)
+== wavemicin   streaming pin 1: RAW DEFAULT SPEECH COMMUNICATIONS
+                                FAR_FIELD_SPEECH  UNKNOWN to this Windows audiosrv
+```
+
+`AUDIO_SIGNALPROCESSINGMODE_FAR_FIELD_SPEECH` {28941cba-3be6-4a78-9a76-30fd91559b64} comes from the
+upstream (Windows 11) sample's `MicInPinSupportedDeviceModes`. Its GUID does not occur in Windows 10's
+audiosrv.dll / AudioEndpointBuilder.dll / audioeng.dll at all (SPEECH, COMMUNICATIONS, NOTIFICATION
+do), so audiosrv cannot resolve the endpoint's modes and every client call fails with "not found",
+which clients see as `AUDCLNT_E_UNSUPPORTED_FORMAT`. This explains why only capture failed, why
+mono → stereo changed nothing and why the system's Stereo Mix works.
+Fix: the capture pin advertises only RAW and DEFAULT (a cable is a pass-through; SPEECH /
+COMMUNICATIONS clients fall back to DEFAULT). Hardware volume/mute/meter nodes (`hwsupport=0x7`) were
+the other suspect and are not involved.
+Lesson: run `ksprobe.py modes` after touching any `*PinSupportedDeviceModes` table; anything newer
+than the oldest supported Windows breaks that endpoint there.
 
 ### F6 — Duplicate devnode after a failed install
 A failed `devcon install` still creates `ROOT\MEDIA\0000` without a driver; reinstalling adds
