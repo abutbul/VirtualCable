@@ -35,6 +35,8 @@ python tools/cable_e2e_test.py ft8 --wav 000000_000001.wav --cable A   # FT8 thr
 
 Keep each `CABLE-x Input` volume at 100% in Windows; the playback volume scales the signal.
 
+To use the cables with WSJT-X and Web Radio Control, follow [docs/WSJT-X.md](../docs/WSJT-X.md).
+
 If something fails, see [docs/DEBUGGING.md](../docs/DEBUGGING.md): it lists the driver- and audio-service-level diagnostic tools in `tools/diag/` and the issues already found and fixed.
 
 The driver currently supports stereo 48 kHz, 16-bit PCM playback and recording. Other rates, bit depths, channel counts, persistent latency configuration, and the reference manual's statistics/control panel are not implemented. A successful build alone does not establish that endpoint creation or pass-through works; record the Windows version, endpoint list, and signal/isolation results when testing.

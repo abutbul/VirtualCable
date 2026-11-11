@@ -2,15 +2,16 @@
 
 Scope reference: `documentation.txt` (VB-CABLE Reference Manual, revision 3, October 2024).
 
-Current baseline: four test-signed endpoint pairs build on Windows. The driver path is fixed at stereo 48 kHz, 16-bit PCM playback and capture. Endpoint creation and actual audio transport still require installation and signal verification on a Windows test VM.
+Current baseline: four test-signed endpoint pairs build on Windows. The driver path is fixed at stereo 48 kHz, 16-bit PCM playback and capture. Installed and verified on Windows 10 Pro 19045 (driver v4, 10.52.44.702), including live FT8 reception in WSJT-X (see `docs/WSJT-X.md`); Windows 11 is not yet tested.
 
 ## P0: Validate the current four-cable release
 
-- [ ] Install the package on a disposable Windows 10/11 x64 VM with test signing enabled.
-- [ ] Verify all eight endpoints appear in Windows Sound settings with the correct playback/recording roles.
-- [ ] Play and capture a known signal through each matching A, B, C, and D pair.
-- [ ] Verify isolation: audio sent to one cable never appears on the other three recording endpoints.
-- [ ] Verify WASAPI loopback capture on all four playback endpoints.
+- [x] Install the package on a Windows 10 x64 test machine with test signing enabled (19045). Windows 11 still to do.
+- [x] Verify all eight endpoints appear in Windows Sound settings with the correct playback/recording roles.
+- [x] Play and capture a known signal through each matching A, B, C, and D pair.
+- [x] Verify isolation: audio sent to one cable never appears on the other three recording endpoints.
+- [x] Verify WASAPI loopback capture on all four playback endpoints.
+- [x] Real application: Web Radio Control audio → CABLE-A → WSJT-X decodes FT8 on 20/15/10 m, with a second recorder on the same cable at the same time.
 - [ ] Exercise simultaneous clients and repeated start/stop, device refresh, suspend/resume, and reboot.
 - [ ] Check Device Manager, driver logs, and Windows audio diagnostics for errors; preserve test results with OS build and driver package hash.
 

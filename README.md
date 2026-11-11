@@ -11,7 +11,13 @@ The current driver path supports stereo 48 kHz, 16-bit PCM playback and recordin
 
 ## Driver status
 
-This is not yet a full implementation of the reference manual. The driver's exposed stream formats are fixed to 48 kHz PCM. User-configurable internal sample rates, resampling at the driver boundary, latency controls and statistics, and the complete control panel are not implemented. Shared-mode format conversion may be performed by Windows Audio Engine; exclusive-format behavior has not been validated. The driver has not yet been installed and audio pass-through verified on a Windows test machine.
+This is not yet a full implementation of the reference manual. The driver's exposed stream formats are fixed to 48 kHz PCM. User-configurable internal sample rates, resampling at the driver boundary, latency controls and statistics, and the complete control panel are not implemented. Shared-mode format conversion may be performed by Windows Audio Engine.
+
+Verified on Windows 10 Pro 19045 with test signing (driver v4, 10.52.44.702): all eight endpoints appear with their `CABLE-x Input/Output` names; playback, recording (shared, exclusive, MME) and WASAPI loopback work on all four cables, with isolation between cables and about 185–205 ms latency; live FT8 from a Web Radio Control radio decodes in WSJT-X through the cable on 20, 15 and 10 m. Windows 11 has not been tested yet.
+
+## Using it with WSJT-X
+
+See [docs/WSJT-X.md](docs/WSJT-X.md) for the full setup with WSJT-X and Web Radio Control (`wrc-proxy`): which cable goes where, the Windows, browser and WSJT-X settings, troubleshooting, and the test results.
 
 The code is derived from Microsoft's SysVAD sample and includes its license and the WIL license under `drivers/windows-driver-samples/`.
 

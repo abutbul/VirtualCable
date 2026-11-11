@@ -47,6 +47,7 @@ For FT8 tests install WSJT-X (official GitHub release); it provides `jt9.exe` (d
 | `tools/cable_e2e_test.py passthrough` | no | Signal, isolation between cables, latency, through the recording endpoints |
 | `tools/cable_e2e_test.py loopback` | no | Same ring buffer via WASAPI loopback of `CABLE-x Input`; works even when capture endpoints don't |
 | `tools/cable_e2e_test.py ft8 --wav F [--rec "loopback:CABLE-A Input"]` | no | FT8 through the cable, decoded by `jt9` |
+| `tools/ft8_monitor.py [--cable A] [--slots 8] [--rig localhost:4532]` | no | Live receive-only FT8 decodes from a recording endpoint, with its level and the radio's dial (read from wrc-proxy). Separates "cable/browser" from "WSJT-X settings" problems; see [WSJT-X.md](WSJT-X.md) |
 | `tools/diag/ksprobe.py pins\|formats\|modes\|topo\|stream\|all` | no | Driver-level truth: pin layout/names/instances, format acceptance, data intersection, per-mode default formats, topology nodes/jacks, a full WaveRT stream start like audiodg does |
 | `tools/diag/wasapi_probe.py endpoints` | no | MMDevices registry: endpoint name, form factor, KS filter, stored device and **mix format** |
 | `tools/diag/wasapi_probe.py open` | no | GetMixFormat, shared/exclusive IsFormatSupported/Initialize, stream categories + RAW mode, MME |
